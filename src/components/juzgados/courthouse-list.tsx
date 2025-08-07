@@ -48,7 +48,7 @@ export default function CourthouseList({
   }, [courthouses, searchTerm, provinciaFilter, fueroFilter]);
 
   const getAverageRating = (juzgadoId: string) => {
-    const relevantRatings = ratings.filter((r) => r.juzgadoId === juzgadoId);
+    const relevantRatings = ratings.filter((r) => r.juzgadoId === juzgadoId && r.status === 'approved');
     if (relevantRatings.length === 0) return 0;
     const totalScore = relevantRatings.reduce((acc, r) => {
       const scores = Object.values(r.puntuaciones);
@@ -56,6 +56,10 @@ export default function CourthouseList({
     }, 0);
     return totalScore / relevantRatings.length;
   };
+
+  const getRatingCount = (juzgadoId: string) => {
+      return ratings.filter(r => r.juzgadoId === juzgadoId && r.status === 'approved').length;
+  }
 
   return (
     <div>
@@ -103,7 +107,7 @@ export default function CourthouseList({
               key={courthouse.id}
               courthouse={courthouse}
               averageRating={getAverageRating(courthouse.id)}
-              ratingCount={ratings.filter(r => r.juzgadoId === courthouse.id).length}
+              ratingCount={getRatingCount(courthouse.id)}
             />
           ))
         ) : (

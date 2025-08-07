@@ -87,6 +87,7 @@ export const mockRatings: Rating[] = [
     comentario: "Excelente atención por parte del personal de mesa de entradas. El proceso fue más rápido de lo esperado.",
     fechaExperiencia: "2023-10-15T00:00:00.000Z",
     fechaCalificacion: "2023-10-20T00:00:00.000Z",
+    status: 'approved',
   },
   {
     id: "rating-2",
@@ -102,6 +103,7 @@ export const mockRatings: Rating[] = [
     comentario: "Mucha demora en la resolución de expedientes simples. La organización interna parece caótica.",
     fechaExperiencia: "2023-09-01T00:00:00.000Z",
     fechaCalificacion: "2023-09-05T00:00:00.000Z",
+    status: 'approved',
   },
   {
     id: "rating-3",
@@ -117,6 +119,7 @@ export const mockRatings: Rating[] = [
     comentario: "Un juzgado modelo. Eficientes, organizados y con un trato impecable. Resoluciones en tiempo récord.",
     fechaExperiencia: "2023-11-02T00:00:00.000Z",
     fechaCalificacion: "2023-11-03T00:00:00.000Z",
+    status: 'approved',
   },
   {
     id: "rating-4",
@@ -132,5 +135,6 @@ export const mockRatings: Rating[] = [
     comentario: "El personal es amable, pero los tiempos procesales son muy largos. La infraestructura es un poco antigua.",
     fechaExperiencia: "2023-08-20T00:00:00.000Z",
     fechaCalificacion: "2023-08-21T00:00:00.000Z",
+    status: 'pending',
   },
 ];

@@ -25,6 +25,7 @@ export interface Rating {
   comentario: string;
   fechaExperiencia: string; // ISO date string
   fechaCalificacion: string; // ISO date string
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 export const ratingCategories: {

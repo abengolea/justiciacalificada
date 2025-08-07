@@ -82,8 +82,10 @@ export default function CourthouseDetailPage({
     notFound();
   }
 
-  const ratings = mockRatings.filter((r) => r.juzgadoId === courthouse.id);
-  const { averages, overallAverage } = getAverageRatings(ratings);
+  const approvedRatings = mockRatings.filter(
+    (r) => r.juzgadoId === courthouse.id && r.status === 'approved'
+  );
+  const { averages, overallAverage } = getAverageRatings(approvedRatings);
 
   return (
     <div className="container mx-auto max-w-6xl py-8 px-4 md:px-6">
@@ -112,14 +114,14 @@ export default function CourthouseDetailPage({
 
           <AiSummary
             courtId={courthouse.id}
-            comments={ratings.map((r) => r.comentario)}
+            comments={approvedRatings.map((r) => r.comentario)}
           />
 
           <Card>
             <CardHeader>
               <CardTitle className="font-headline">Calificaciones</CardTitle>
               <CardDescription>
-                Promedio de calificaciones basado en {ratings.length}{" "}
+                Promedio de calificaciones basado en {approvedRatings.length}{" "}
                 evaluaciones.
               </CardDescription>
             </CardHeader>
@@ -155,12 +157,12 @@ export default function CourthouseDetailPage({
               <CardTitle className="font-headline">Comentarios de Abogados</CardTitle>
             </CardHeader>
             <CardContent>
-              {ratings.length > 0 ? (
+              {approvedRatings.length > 0 ? (
                 <div className="space-y-6">
-                  {ratings.map((rating, index) => (
+                  {approvedRatings.map((rating, index) => (
                     <>
                       <CommentCard key={rating.id} rating={rating} />
-                      {index < ratings.length - 1 && <Separator />}
+                      {index < approvedRatings.length - 1 && <Separator />}
                     </>
                   ))}
                 </div>

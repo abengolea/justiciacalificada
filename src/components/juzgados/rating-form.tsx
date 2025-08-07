@@ -99,10 +99,23 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log({ courthouseId, ...values });
+    // En una aplicación real, esto se enviaría a un backend.
+    const newRating = { 
+      id: `rating-${Date.now()}`,
+      juzgadoId, 
+      usuarioId: 'user-1', // Mock user
+      ...values,
+      fechaCalificacion: new Date().toISOString(),
+      fechaExperiencia: values.fechaExperiencia.toISOString(),
+      status: 'pending' as const,
+    };
+    
+    console.log("Nuevo comentario enviado para moderación:", newRating);
+    console.log("Simulando envío de email a admin@example.com...");
+    
     toast({
       title: "Calificación Enviada",
-      description: "Gracias por su contribución para mejorar la justicia.",
+      description: "Su comentario ha sido enviado y está pendiente de aprobación por un administrador. Gracias por su contribución.",
       variant: 'default',
     });
     form.reset();
