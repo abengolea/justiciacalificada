@@ -1,4 +1,23 @@
-import type { Courthouse, Rating } from "./types";
+import type { Courthouse, Rating, User } from "./types";
+
+export const mockUsers: User[] = [
+  {
+    id: 'user-admin',
+    nombre: 'Admin',
+    apellido: 'Principal',
+    email: 'admin@example.com',
+    matricula: 'T0 F0',
+    role: 'admin',
+  },
+  {
+    id: 'user-1',
+    nombre: 'Juan',
+    apellido: 'Perez',
+    email: 'juan.perez@example.com',
+    matricula: 'T123 F45',
+    role: 'user',
+  },
+];
 
 export const mockCourthouses: Courthouse[] = [
   {
@@ -57,13 +76,13 @@ export const mockRatings: Rating[] = [
   {
     id: "rating-1",
     juzgadoId: "juz-civ-1-caba",
-    usuarioId: "userhash1",
+    usuarioId: "user-1",
     puntuaciones: {
-      eficiencia: 4,
-      tiempoResolucion: 3,
-      atencion: 5,
-      organizacion: 4,
-      accesibilidad: 5,
+      eficiencia: 8,
+      tiempoResolucion: 6,
+      atencion: 9,
+      organizacion: 7,
+      accesibilidad: 10,
     },
     comentario: "Excelente atención por parte del personal de mesa de entradas. El proceso fue más rápido de lo esperado.",
     fechaExperiencia: "2023-10-15T00:00:00.000Z",
@@ -72,13 +91,13 @@ export const mockRatings: Rating[] = [
   {
     id: "rating-2",
     juzgadoId: "juz-civ-1-caba",
-    usuarioId: "userhash2",
+    usuarioId: "user-admin",
     puntuaciones: {
-      eficiencia: 2,
-      tiempoResolucion: 1,
-      atencion: 3,
-      organizacion: 2,
-      accesibilidad: 4,
+      eficiencia: 4,
+      tiempoResolucion: 2,
+      atencion: 6,
+      organizacion: 4,
+      accesibilidad: 8,
     },
     comentario: "Mucha demora en la resolución de expedientes simples. La organización interna parece caótica.",
     fechaExperiencia: "2023-09-01T00:00:00.000Z",
@@ -87,13 +106,13 @@ export const mockRatings: Rating[] = [
   {
     id: "rating-3",
     juzgadoId: "juz-com-2-caba",
-    usuarioId: "userhash3",
+    usuarioId: "user-1",
     puntuaciones: {
-      eficiencia: 5,
-      tiempoResolucion: 5,
-      atencion: 5,
-      organizacion: 5,
-      accesibilidad: 5,
+      eficiencia: 10,
+      tiempoResolucion: 10,
+      atencion: 10,
+      organizacion: 10,
+      accesibilidad: 10,
     },
     comentario: "Un juzgado modelo. Eficientes, organizados y con un trato impecable. Resoluciones en tiempo récord.",
     fechaExperiencia: "2023-11-02T00:00:00.000Z",
@@ -102,13 +121,13 @@ export const mockRatings: Rating[] = [
   {
     id: "rating-4",
     juzgadoId: "juz-lab-3-cordoba",
-    usuarioId: "userhash4",
+    usuarioId: "user-admin",
     puntuaciones: {
-      eficiencia: 3,
-      tiempoResolucion: 2,
-      atencion: 4,
-      organizacion: 3,
-      accesibilidad: 4,
+      eficiencia: 6,
+      tiempoResolucion: 4,
+      atencion: 8,
+      organizacion: 6,
+      accesibilidad: 8,
     },
     comentario: "El personal es amable, pero los tiempos procesales son muy largos. La infraestructura es un poco antigua.",
     fechaExperiencia: "2023-08-20T00:00:00.000Z",

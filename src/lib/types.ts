@@ -37,3 +37,12 @@ export const ratingCategories: {
   { key: "organizacion", label: "Organización administrativa" },
   { key: "accesibilidad", label: "Accesibilidad" },
 ];
+
+export interface User {
+  id: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  matricula: string;
+  role: 'admin' | 'user';
+}

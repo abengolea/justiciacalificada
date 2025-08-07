@@ -5,11 +5,14 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Scale } from "lucide-react";
+import { Menu, Scale, Shield } from "lucide-react";
 import { AppLogo } from "@/components/icons";
+import { mockUsers } from "@/lib/data"; // Asumimos un usuario mock por ahora
 
 export function SiteHeader() {
   const pathname = usePathname();
+  // Simulación de sesión de usuario. En una app real, esto vendría de un contexto de autenticación.
+  const user = mockUsers.find(u => u.role === 'admin'); 
 
   const mainNav = [
     {
@@ -43,6 +46,22 @@ export function SiteHeader() {
                 {item.title}
               </Link>
             ))}
+             {user?.role === 'admin' && (
+              <Link
+                href="/admin"
+                className={cn(
+                  "transition-colors hover:text-foreground/80",
+                  pathname.startsWith('/admin')
+                    ? "text-foreground"
+                    : "text-foreground/60"
+                )}
+              >
+                <div className="flex items-center gap-1">
+                  <Shield className="h-4 w-4" />
+                  Admin
+                </div>
+              </Link>
+            )}
           </nav>
         </div>
 
@@ -81,6 +100,22 @@ export function SiteHeader() {
                   {item.title}
                 </Link>
               ))}
+              {user?.role === 'admin' && (
+              <Link
+                href="/admin"
+                className={cn(
+                  "transition-colors hover:text-foreground/80",
+                  pathname.startsWith('/admin')
+                    ? "text-foreground"
+                    : "text-foreground/60"
+                )}
+              >
+                 <div className="flex items-center gap-1">
+                  <Shield className="h-4 w-4" />
+                  Admin
+                </div>
+              </Link>
+            )}
             </div>
           </SheetContent>
         </Sheet>
@@ -90,12 +125,18 @@ export function SiteHeader() {
         </Link>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-          <Button variant="ghost" asChild>
-            <Link href="/login">Ingresar</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/register">Registrarse</Link>
-          </Button>
+          {user ? (
+             <span className="text-sm text-muted-foreground">Hola, {user.nombre}</span>
+          ) : (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="/login">Ingresar</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/register">Registrarse</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>
