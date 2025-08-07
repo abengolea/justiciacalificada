@@ -1,0 +1,117 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CourthouseCard } from "./courthouse-card";
+import type { Courthouse, Rating } from "@/lib/types";
+import { Search } from "lucide-react";
+
+interface CourthouseListProps {
+  courthouses: Courthouse[];
+  ratings: Rating[];
+}
+
+export default function CourthouseList({
+  courthouses,
+  ratings,
+}: CourthouseListProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [provinciaFilter, setProvinciaFilter] = useState("all");
+  const [fueroFilter, setFueroFilter] = useState("all");
+
+  const provincias = useMemo(
+    () => ["all", ...new Set(courthouses.map((c) => c.provincia))],
+    [courthouses]
+  );
+  const fueros = useMemo(
+    () => ["all", ...new Set(courthouses.map((c) => c.fuero))],
+    [courthouses]
+  );
+
+  const filteredCourthouses = useMemo(() => {
+    return courthouses.filter((courthouse) => {
+      const searchMatch =
+        courthouse.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        courthouse.ciudad.toLowerCase().includes(searchTerm.toLowerCase());
+      const provinciaMatch =
+        provinciaFilter === "all" || courthouse.provincia === provinciaFilter;
+      const fueroMatch = fueroFilter === "all" || courthouse.fuero === fueroFilter;
+      return searchMatch && provinciaMatch && fueroMatch;
+    });
+  }, [courthouses, searchTerm, provinciaFilter, fueroFilter]);
+
+  const getAverageRating = (juzgadoId: string) => {
+    const relevantRatings = ratings.filter((r) => r.juzgadoId === juzgadoId);
+    if (relevantRatings.length === 0) return 0;
+    const totalScore = relevantRatings.reduce((acc, r) => {
+      const scores = Object.values(r.puntuaciones);
+      return acc + scores.reduce((a, b) => a + b, 0) / scores.length;
+    }, 0);
+    return totalScore / relevantRatings.length;
+  };
+
+  return (
+    <div>
+      <div className="mb-6 p-4 bg-card rounded-lg shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre o ciudad..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={provinciaFilter} onValueChange={setProvinciaFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filtrar por provincia" />
+            </SelectTrigger>
+            <SelectContent>
+              {provincias.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {p === "all" ? "Todas las provincias" : p}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={fueroFilter} onValueChange={setFueroFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filtrar por fuero" />
+            </SelectTrigger>
+            <SelectContent>
+              {fueros.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f === "all" ? "Todos los fueros" : f}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredCourthouses.length > 0 ? (
+          filteredCourthouses.map((courthouse) => (
+            <CourthouseCard
+              key={courthouse.id}
+              courthouse={courthouse}
+              averageRating={getAverageRating(courthouse.id)}
+              ratingCount={ratings.filter(r => r.juzgadoId === courthouse.id).length}
+            />
+          ))
+        ) : (
+          <p className="col-span-full text-center text-muted-foreground py-10">
+            No se encontraron juzgados que coincidan con su búsqueda.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
