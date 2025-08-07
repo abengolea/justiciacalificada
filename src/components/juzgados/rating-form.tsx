@@ -34,11 +34,11 @@ import { format } from "date-fns";
 
 const formSchema = z.object({
   puntuaciones: z.object({
-    eficiencia: z.number().min(1).max(5),
-    tiempoResolucion: z.number().min(1).max(5),
-    atencion: z.number().min(1).max(5),
-    organizacion: z.number().min(1).max(5),
-    accesibilidad: z.number().min(1).max(5),
+    eficiencia: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    tiempoResolucion: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    atencion: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    organizacion: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    accesibilidad: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
   }),
   comentario: z.string().min(10, "El comentario debe tener al menos 10 caracteres.").max(500, "El comentario no puede exceder los 500 caracteres."),
   fechaExperiencia: z.date({
@@ -56,7 +56,7 @@ const StarRating = ({
   const [hoverValue, setHoverValue] = useState(0);
   return (
     <div className="flex items-center">
-      {[...Array(5)].map((_, index) => {
+      {[...Array(10)].map((_, index) => {
         const ratingValue = index + 1;
         return (
           <button
@@ -130,7 +130,7 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
                       control={form.control}
                       name={`puntuaciones.${key}`}
                       render={({ field }) => (
-                        <FormItem className="flex items-center justify-between">
+                        <FormItem>
                           <FormLabel>{label}</FormLabel>
                           <FormControl>
                             <StarRating
@@ -138,11 +138,11 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
                               onChange={field.onChange}
                             />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
                   ))}
-                  <FormMessage />
                 </FormItem>
               )}
             />

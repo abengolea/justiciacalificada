@@ -129,7 +129,7 @@ export default function CourthouseDetailPage({
                 <span className="text-4xl font-bold">
                   {overallAverage.toFixed(1)}
                 </span>
-                <span className="text-xl text-muted-foreground ml-2">/ 5</span>
+                <span className="text-xl text-muted-foreground ml-2">/ 10</span>
               </div>
               <div className="space-y-4">
                 {ratingCategories.map(({ key, label }) => (
@@ -143,7 +143,7 @@ export default function CourthouseDetailPage({
                         {averages[key].toFixed(1)}
                       </span>
                     </div>
-                    <Progress value={averages[key] * 20} />
+                    <Progress value={averages[key] * 10} />
                   </div>
                 ))}
               </div>

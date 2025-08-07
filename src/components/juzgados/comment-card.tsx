@@ -21,7 +21,7 @@ export function CommentCard({ rating }: CommentCardProps) {
               <Star
                 key={i}
                 className={`h-5 w-5 ${
-                  i < Math.round(overallScore)
+                  i < Math.round(overallScore / 2)
                     ? "text-yellow-500 fill-yellow-500"
                     : "text-gray-300"
                 }`}
