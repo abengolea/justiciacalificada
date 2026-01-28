@@ -8,18 +8,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Gauge,
+  Gavel,
+  FastForward,
   Timer,
   Users,
+  UserCheck,
+  Clock,
   FolderKanban,
-  Accessibility,
+  Laptop,
+  Lightbulb,
+  GraduationCap,
   Star,
   MapPin,
   Phone,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Rating, ratingCategories } from "@/lib/types";
+import { Rating, ratingCategories, RatingCategories } from "@/lib/types";
 import { CommentCard } from "@/components/juzgados/comment-card";
 import { RatingForm } from "@/components/juzgados/rating-form";
 import AiSummary from "@/components/juzgados/ai-summary";
@@ -30,46 +35,67 @@ interface CourthouseDetailPageProps {
   };
 }
 
-const iconMap = {
-  eficiencia: <Gauge className="h-5 w-5 mr-2 text-primary" />,
-  tiempoResolucion: <Timer className="h-5 w-5 mr-2 text-primary" />,
-  atencion: <Users className="h-5 w-5 mr-2 text-primary" />,
-  organizacion: <FolderKanban className="h-5 w-5 mr-2 text-primary" />,
-  accesibilidad: <Accessibility className="h-5 w-5 mr-2 text-primary" />,
+const iconMap: Record<keyof RatingCategories, React.ReactNode> = {
+  calidadResoluciones: <Gavel className="h-5 w-5 mr-2 text-primary" />,
+  rapidezResoluciones: <FastForward className="h-5 w-5 mr-2 text-primary" />,
+  rapidezDespacho: <Timer className="h-5 w-5 mr-2 text-primary" />,
+  atencionMesaEntradas: <Users className="h-5 w-5 mr-2 text-primary" />,
+  tratoProfesional: <UserCheck className="h-5 w-5 mr-2 text-primary" />,
+  puntualidadAudiencias: <Clock className="h-5 w-5 mr-2 text-primary" />,
+  ordenGeneral: <FolderKanban className="h-5 w-5 mr-2 text-primary" />,
+  tecnologia: <Laptop className="h-5 w-5 mr-2 text-primary" />,
+  practicidad: <Lightbulb className="h-5 w-5 mr-2 text-primary" />,
+  capacitacionPersonal: <GraduationCap className="h-5 w-5 mr-2 text-primary" />,
 };
 
 function getAverageRatings(ratings: Rating[]) {
-  const totals = {
-    eficiencia: 0,
-    tiempoResolucion: 0,
-    atencion: 0,
-    organizacion: 0,
-    accesibilidad: 0,
+  const totals: { [key in keyof RatingCategories]: number } = {
+    calidadResoluciones: 0,
+    rapidezResoluciones: 0,
+    rapidezDespacho: 0,
+    atencionMesaEntradas: 0,
+    tratoProfesional: 0,
+    puntualidadAudiencias: 0,
+    ordenGeneral: 0,
+    tecnologia: 0,
+    practicidad: 0,
+    capacitacionPersonal: 0,
   };
   const counts = { ...totals };
   let overallTotal = 0;
-  let overallCount = 0;
 
-  for (const rating of ratings) {
-    for (const key in rating.puntuaciones) {
-      const category = key as keyof typeof totals;
-      totals[category] += rating.puntuaciones[category];
-      counts[category]++;
-    }
-    const scores = Object.values(rating.puntuaciones);
-    overallTotal += scores.reduce((a, b) => a + b, 0) / scores.length;
-    overallCount++;
+  if (ratings.length === 0) {
+    return { averages: totals, overallAverage: 0 };
   }
 
-  const averages = {
-    eficiencia: totals.eficiencia / (counts.eficiencia || 1),
-    tiempoResolucion: totals.tiempoResolucion / (counts.tiempoResolucion || 1),
-    atencion: totals.atencion / (counts.atencion || 1),
-    organizacion: totals.organizacion / (counts.organizacion || 1),
-    accesibilidad: totals.accesibilidad / (counts.accesibilidad || 1),
+  const totalWeight = ratingCategories.reduce((acc, cat) => acc + cat.weight, 0);
+
+  for (const rating of ratings) {
+    let weightedScore = 0;
+    for (const cat of ratingCategories) {
+      const key = cat.key;
+      const score = rating.puntuaciones[key] || 0;
+      totals[key] += score;
+      counts[key]++;
+      weightedScore += score * cat.weight;
+    }
+    overallTotal += (totalWeight > 0 ? weightedScore / totalWeight : 0);
+  }
+
+  const averages: RatingCategories = {
+    calidadResoluciones: totals.calidadResoluciones / (counts.calidadResoluciones || 1),
+    rapidezResoluciones: totals.rapidezResoluciones / (counts.rapidezResoluciones || 1),
+    rapidezDespacho: totals.rapidezDespacho / (counts.rapidezDespacho || 1),
+    atencionMesaEntradas: totals.atencionMesaEntradas / (counts.atencionMesaEntradas || 1),
+    tratoProfesional: totals.tratoProfesional / (counts.tratoProfesional || 1),
+    puntualidadAudiencias: totals.puntualidadAudiencias / (counts.puntualidadAudiencias || 1),
+    ordenGeneral: totals.ordenGeneral / (counts.ordenGeneral || 1),
+    tecnologia: totals.tecnologia / (counts.tecnologia || 1),
+    practicidad: totals.practicidad / (counts.practicidad || 1),
+    capacitacionPersonal: totals.capacitacionPersonal / (counts.capacitacionPersonal || 1),
   };
 
-  const overallAverage = overallTotal / (overallCount || 1);
+  const overallAverage = overallTotal / ratings.length;
 
   return { averages, overallAverage };
 }

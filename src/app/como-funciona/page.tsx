@@ -1,3 +1,5 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -36,7 +38,7 @@ const steps = [
       'APORTE SUS VALORACIONES DE ACUERDO A LAS EXPERIENCIAS EMANADAS DE SU LABOR PROFESIONAL',
     description: 'Su identidad será resguardada en cada opinión dada en el sistema.',
     buttonText: 'BASES & CONDICIONES',
-    buttonLink: '#',
+    buttonLink: '/terminos-y-condiciones',
     imageSrc: 'https://picsum.photos/seed/contribute/800/600',
     imageAlt: 'Persona calificando su experiencia',
     aiHint: 'review rating',

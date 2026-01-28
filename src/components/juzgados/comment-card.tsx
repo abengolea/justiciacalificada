@@ -1,5 +1,6 @@
 import { Star, Calendar } from "lucide-react";
 import type { Rating } from "@/lib/types";
+import { ratingCategories } from "@/lib/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -8,9 +9,12 @@ interface CommentCardProps {
 }
 
 export function CommentCard({ rating }: CommentCardProps) {
-  const overallScore =
-    Object.values(rating.puntuaciones).reduce((acc, val) => acc + val, 0) /
-    Object.keys(rating.puntuaciones).length;
+  const totalWeight = ratingCategories.reduce((acc, cat) => acc + cat.weight, 0);
+  const weightedScore = ratingCategories.reduce((acc, cat) => {
+      const score = rating.puntuaciones[cat.key] || 0;
+      return acc + (score * cat.weight);
+  }, 0);
+  const overallScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
 
   return (
     <div className="flex flex-col gap-3">

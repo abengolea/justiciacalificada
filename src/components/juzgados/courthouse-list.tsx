@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { CourthouseCard } from "./courthouse-card";
 import type { Courthouse, Rating } from "@/lib/types";
+import { ratingCategories } from "@/lib/types";
 import { Search } from "lucide-react";
 
 interface CourthouseListProps {
@@ -50,10 +51,17 @@ export default function CourthouseList({
   const getAverageRating = (juzgadoId: string) => {
     const relevantRatings = ratings.filter((r) => r.juzgadoId === juzgadoId && r.status === 'approved');
     if (relevantRatings.length === 0) return 0;
+    
+    const totalWeight = ratingCategories.reduce((acc, cat) => acc + cat.weight, 0);
+
     const totalScore = relevantRatings.reduce((acc, r) => {
-      const scores = Object.values(r.puntuaciones);
-      return acc + scores.reduce((a, b) => a + b, 0) / scores.length;
+      const weightedScore = ratingCategories.reduce((catAcc, cat) => {
+        const score = r.puntuaciones[cat.key] || 0;
+        return catAcc + (score * cat.weight);
+      }, 0);
+      return acc + (totalWeight > 0 ? weightedScore / totalWeight : 0);
     }, 0);
+
     return totalScore / relevantRatings.length;
   };
 

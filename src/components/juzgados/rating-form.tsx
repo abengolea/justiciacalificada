@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Star } from "lucide-react";
-import { ratingCategories, type RatingCategories } from "@/lib/types";
+import { ratingCategories } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar"
@@ -34,11 +34,16 @@ import { format } from "date-fns";
 
 const formSchema = z.object({
   puntuaciones: z.object({
-    eficiencia: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
-    tiempoResolucion: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
-    atencion: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
-    organizacion: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
-    accesibilidad: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    calidadResoluciones: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    rapidezResoluciones: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    rapidezDespacho: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    atencionMesaEntradas: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    tratoProfesional: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    puntualidadAudiencias: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    ordenGeneral: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    tecnologia: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    practicidad: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
+    capacitacionPersonal: z.number().min(1, "La calificación debe ser al menos 1.").max(10, "La calificación no puede ser mayor a 10."),
   }),
   comentario: z.string().min(10, "El comentario debe tener al menos 10 caracteres.").max(500, "El comentario no puede exceder los 500 caracteres."),
   fechaExperiencia: z.date({
@@ -88,11 +93,16 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       puntuaciones: {
-        eficiencia: 0,
-        tiempoResolucion: 0,
-        atencion: 0,
-        organizacion: 0,
-        accesibilidad: 0,
+        calidadResoluciones: 0,
+        rapidezResoluciones: 0,
+        rapidezDespacho: 0,
+        atencionMesaEntradas: 0,
+        tratoProfesional: 0,
+        puntualidadAudiencias: 0,
+        ordenGeneral: 0,
+        tecnologia: 0,
+        practicidad: 0,
+        capacitacionPersonal: 0,
       },
       comentario: "",
     },
@@ -137,14 +147,14 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
               name="puntuaciones"
               render={() => (
                 <FormItem>
-                  {ratingCategories.map(({ key, label }) => (
+                  {ratingCategories.map(({ key, label, weight }) => (
                     <FormField
                       key={key}
                       control={form.control}
                       name={`puntuaciones.${key}`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{label}</FormLabel>
+                          <FormLabel>{label} <span className="text-muted-foreground text-xs">(x{weight})</span></FormLabel>
                           <FormControl>
                             <StarRating
                               value={field.value}
@@ -207,7 +217,7 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
               name="comentario"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Comentario (opcional)</FormLabel>
+                  <FormLabel>Comentario</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Describa su experiencia..."
