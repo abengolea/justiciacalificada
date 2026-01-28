@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   Menu,
   Facebook,
@@ -12,19 +12,25 @@ import {
   Instagram,
   User as UserIcon,
   ChevronDown,
-} from "lucide-react";
-import { AppLogo } from "@/components/icons";
-import { mockUsers } from "@/lib/data";
+} from 'lucide-react';
+import { AppLogo } from '@/components/icons';
+import { mockUsers } from '@/lib/data';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from '@/components/ui/collapsible';
+import { useState, useEffect } from 'react';
 
 export function SiteHeader() {
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const pathname = usePathname();
   // Simulación de sesión de usuario.
-  const user = mockUsers.find((u) => u.role === "admin");
+  const user = mockUsers.find((u) => u.role === 'admin');
 
   const mainNav: {
     title: string;
@@ -32,16 +38,16 @@ export function SiteHeader() {
     subItems?: { title: string; href: string }[];
   }[] = [
     {
-      title: "DEPENDENCIAS",
-      href: "/juzgados",
+      title: 'DEPENDENCIAS',
+      href: '/juzgados',
       subItems: [
-        { title: "Buscar", href: "/juzgados" },
-        { title: "Comparar", href: "#" },
-        { title: "Ranking", href: "#" },
-        { title: "Proponer", href: "#" },
+        { title: 'Buscar', href: '/juzgados' },
+        { title: 'Comparar', href: '#' },
+        { title: 'Ranking', href: '#' },
+        { title: 'Proponer', href: '#' },
       ],
     },
-    { title: "CÓMO FUNCIONA", href: "/como-funciona" },
+    { title: 'CÓMO FUNCIONA', href: '/como-funciona' },
   ];
 
   return (
@@ -116,138 +122,140 @@ export function SiteHeader() {
             </Link>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-              {mainNav.map((item) =>
-                item.subItems ? (
-                  <div key={item.title} className="group relative">
-                    <div
-                      className={cn(
-                        "flex items-center gap-1 cursor-pointer transition-colors hover:text-primary",
-                        pathname.startsWith(item.href)
-                          ? "text-primary font-semibold"
-                          : "text-foreground/80"
-                      )}
-                    >
-                      {item.title}
-                      <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
-                    </div>
-                    <div className="absolute top-full right-0 z-10 hidden pt-2 group-hover:block">
-                      <div className="w-40 origin-top-right rounded-md bg-popover text-popover-foreground shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                        <div
-                          className="py-1"
-                          role="menu"
-                          aria-orientation="vertical"
-                        >
-                          {item.subItems.map((subItem) => (
-                            <Link
-                              key={subItem.title}
-                              href={subItem.href}
-                              className="block px-4 py-2 text-sm hover:bg-accent"
-                              role="menuitem"
-                            >
-                              {subItem.title}
-                            </Link>
-                          ))}
+          {isClient && (
+            <div className="flex items-center gap-4">
+              {/* Desktop Nav */}
+              <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+                {mainNav.map((item) =>
+                  item.subItems ? (
+                    <div key={item.title} className="group relative">
+                      <div
+                        className={cn(
+                          'flex items-center gap-1 cursor-pointer transition-colors hover:text-primary',
+                          pathname.startsWith(item.href)
+                            ? 'text-primary font-semibold'
+                            : 'text-foreground/80'
+                        )}
+                      >
+                        {item.title}
+                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
+                      </div>
+                      <div className="absolute top-full right-0 z-10 hidden pt-2 group-hover:block">
+                        <div className="w-40 origin-top-right rounded-md bg-popover text-popover-foreground shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                          <div
+                            className="py-1"
+                            role="menu"
+                            aria-orientation="vertical"
+                          >
+                            {item.subItems.map((subItem) => (
+                              <Link
+                                key={subItem.title}
+                                href={subItem.href}
+                                className="block px-4 py-2 text-sm hover:bg-accent"
+                                role="menuitem"
+                              >
+                                {subItem.title}
+                              </Link>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <Link
-                    key={item.title}
-                    href={item.href}
-                    className={cn(
-                      "transition-colors hover:text-primary",
-                      pathname === item.href
-                        ? "text-primary font-semibold"
-                        : "text-foreground/80"
-                    )}
-                  >
-                    {item.title}
-                  </Link>
-                )
-              )}
-            </nav>
+                  ) : (
+                    <Link
+                      key={item.title}
+                      href={item.href}
+                      className={cn(
+                        'transition-colors hover:text-primary',
+                        pathname === item.href
+                          ? 'text-primary font-semibold'
+                          : 'text-foreground/80'
+                      )}
+                    >
+                      {item.title}
+                    </Link>
+                  )
+                )}
+              </nav>
 
-            {/* Mobile Nav */}
-            <div className="md:hidden">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                  >
-                    <Menu className="h-6 w-6" />
-                    <span className="sr-only">Toggle Menu</span>
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="pr-0">
-                  <Link
-                    href="/"
-                    className="mb-6 flex items-center space-x-2"
-                    aria-label="Home"
-                  >
-                    <AppLogo className="h-8 w-8" />
-                    <span className="font-bold">JUSTICIA CALIFICADA</span>
-                  </Link>
-                  <div className="flex flex-col space-y-2">
-                    {mainNav.map((item) =>
-                      item.subItems ? (
-                        <Collapsible key={item.title}>
-                          <CollapsibleTrigger className="flex w-full items-center justify-between p-2 font-medium [&[data-state=open]>svg]:rotate-180">
-                            <span
-                              className={cn(
-                                "text-sm font-medium transition-colors hover:text-primary",
-                                pathname.startsWith(item.href)
-                                  ? "text-primary font-semibold"
-                                  : "text-foreground/80"
-                              )}
-                            >
-                              {item.title}
-                            </span>
-                            <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="py-1 pl-6">
-                            <div className="flex flex-col space-y-2">
-                              {item.subItems.map((subItem) => (
-                                <Link
-                                  key={subItem.title}
-                                  href={subItem.href}
-                                  className={cn(
-                                    "text-sm transition-colors hover:text-primary",
-                                    pathname === subItem.href
-                                      ? "text-primary font-semibold"
-                                      : "text-foreground/80"
-                                  )}
-                                >
-                                  {subItem.title}
-                                </Link>
-                              ))}
-                            </div>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      ) : (
-                        <Link
-                          key={item.title}
-                          href={item.href}
-                          className={cn(
-                            "rounded-md p-2 text-sm font-medium transition-colors hover:text-primary",
-                            pathname === item.href
-                              ? "text-primary font-semibold"
-                              : "text-foreground/80"
-                          )}
-                        >
-                          {item.title}
-                        </Link>
-                      )
-                    )}
-                  </div>
-                </SheetContent>
-              </Sheet>
+              {/* Mobile Nav */}
+              <div className="md:hidden">
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                    >
+                      <Menu className="h-6 w-6" />
+                      <span className="sr-only">Toggle Menu</span>
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="pr-0">
+                    <Link
+                      href="/"
+                      className="mb-6 flex items-center space-x-2"
+                      aria-label="Home"
+                    >
+                      <AppLogo className="h-8 w-8" />
+                      <span className="font-bold">JUSTICIA CALIFICADA</span>
+                    </Link>
+                    <div className="flex flex-col space-y-2">
+                      {mainNav.map((item) =>
+                        item.subItems ? (
+                          <Collapsible key={item.title}>
+                            <CollapsibleTrigger className="flex w-full items-center justify-between p-2 font-medium [&[data-state=open]>svg]:rotate-180">
+                              <span
+                                className={cn(
+                                  'text-sm font-medium transition-colors hover:text-primary',
+                                  pathname.startsWith(item.href)
+                                    ? 'text-primary font-semibold'
+                                    : 'text-foreground/80'
+                                )}
+                              >
+                                {item.title}
+                              </span>
+                              <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="py-1 pl-6">
+                              <div className="flex flex-col space-y-2">
+                                {item.subItems.map((subItem) => (
+                                  <Link
+                                    key={subItem.title}
+                                    href={subItem.href}
+                                    className={cn(
+                                      'text-sm transition-colors hover:text-primary',
+                                      pathname === subItem.href
+                                        ? 'text-primary font-semibold'
+                                        : 'text-foreground/80'
+                                    )}
+                                  >
+                                    {subItem.title}
+                                  </Link>
+                                ))}
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ) : (
+                          <Link
+                            key={item.title}
+                            href={item.href}
+                            className={cn(
+                              'rounded-md p-2 text-sm font-medium transition-colors hover:text-primary',
+                              pathname === item.href
+                                ? 'text-primary font-semibold'
+                                : 'text-foreground/80'
+                            )}
+                          >
+                            {item.title}
+                          </Link>
+                        )
+                      )}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </header>
