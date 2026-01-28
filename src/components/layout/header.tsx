@@ -42,8 +42,6 @@ export function SiteHeader() {
       ],
     },
     { title: "CÓMO FUNCIONA", href: "/como-funciona" },
-    { title: "PRIVACIDAD", href: "/terminos-y-condiciones" },
-    { title: "CONTACTO", href: "/contacto" },
   ];
 
   return (
@@ -109,8 +107,8 @@ export function SiteHeader() {
       {/* Main Header */}
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-20 items-center">
-          <div className="mr-4 hidden md:flex">
-            <Link href="/" className="mr-6 flex items-center space-x-2">
+          <div className="hidden flex-1 items-center justify-between md:flex">
+            <Link href="/" className="flex items-center space-x-2">
               <AppLogo className="h-12 w-12" />
               <span className="hidden font-bold sm:inline-block text-lg tracking-wider">
                 JUSTICIA CALIFICADA
@@ -131,7 +129,7 @@ export function SiteHeader() {
                       {item.title}
                       <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
                     </div>
-                    <div className="absolute top-full left-0 z-10 mt-2 hidden w-40 origin-top-right rounded-md bg-popover text-popover-foreground shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none group-hover:block">
+                    <div className="absolute top-full right-0 z-10 mt-2 hidden w-40 origin-top-right rounded-md bg-popover text-popover-foreground shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none group-hover:block">
                       <div
                         className="py-1"
                         role="menu"

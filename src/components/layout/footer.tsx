@@ -20,7 +20,9 @@ export function SiteFooter() {
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
              <Link href="/" className="hover:text-foreground">Inicio</Link>
              <Link href="/juzgados" className="hover:text-foreground">Juzgados</Link>
-             <Link href="/terminos-y-condiciones" className="hover:text-foreground">Términos y Condiciones</Link>
+             <Link href="/como-funciona" className="hover:text-foreground">Cómo Funciona</Link>
+             <Link href="/terminos-y-condiciones" className="hover:text-foreground">Privacidad</Link>
+             <Link href="/contacto" className="hover:text-foreground">Contacto</Link>
             {user?.role === 'admin' && (
               <Link href="/admin" className="hover:text-foreground" title="Admin">
                 <Shield className="h-4 w-4" />
