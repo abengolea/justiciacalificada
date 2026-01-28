@@ -8,6 +8,7 @@ export const mockUsers: User[] = [
     email: 'admin@example.com',
     matricula: 'T0 F0',
     role: 'admin',
+    status: 'approved',
   },
   {
     id: 'user-1',
@@ -16,6 +17,16 @@ export const mockUsers: User[] = [
     email: 'juan.perez@example.com',
     matricula: 'T123 F45',
     role: 'user',
+    status: 'approved',
+  },
+  {
+    id: 'user-2',
+    nombre: 'Maria',
+    apellido: 'Gomez',
+    email: 'maria.gomez@example.com',
+    matricula: 'T987 F65',
+    role: 'user',
+    status: 'pending',
   },
 ];
 
