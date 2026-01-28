@@ -1,7 +1,11 @@
 import { AppLogo } from "@/components/icons";
 import Link from "next/link";
+import { mockUsers } from "@/lib/data";
+import { Shield } from "lucide-react";
 
 export function SiteFooter() {
+  const user = mockUsers.find(u => u.role === 'admin');
+
   return (
     <footer className="border-t">
       <div className="container py-8">
@@ -17,6 +21,12 @@ export function SiteFooter() {
              <Link href="/" className="hover:text-foreground">Inicio</Link>
              <Link href="/juzgados" className="hover:text-foreground">Juzgados</Link>
              <Link href="/terminos-y-condiciones" className="hover:text-foreground">Términos y Condiciones</Link>
+            {user?.role === 'admin' && (
+              <Link href="/admin" className="hover:text-foreground" title="Admin">
+                <Shield className="h-4 w-4" />
+                <span className="sr-only">Admin</span>
+              </Link>
+            )}
           </div>
         </div>
       </div>

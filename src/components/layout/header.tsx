@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Facebook, Twitter, Instagram, User as UserIcon, Shield } from "lucide-react";
+import { Menu, Facebook, Twitter, Instagram, User as UserIcon } from "lucide-react";
 import { AppLogo } from "@/components/icons";
 import { mockUsers } from "@/lib/data";
 
@@ -88,22 +88,6 @@ export function SiteHeader() {
                   {item.title}
                 </Link>
               ))}
-               {user?.role === 'admin' && (
-              <Link
-                href="/admin"
-                className={cn(
-                  "transition-colors hover:text-foreground/80",
-                  pathname.startsWith('/admin')
-                    ? "text-foreground"
-                    : "text-foreground/60"
-                )}
-              >
-                <div className="flex items-center gap-1">
-                  <Shield className="h-4 w-4" />
-                  Admin
-                </div>
-              </Link>
-            )}
             </nav>
           </div>
 
@@ -142,22 +126,6 @@ export function SiteHeader() {
                     {item.title}
                   </Link>
                 ))}
-                 {user?.role === 'admin' && (
-                  <Link
-                    href="/admin"
-                    className={cn(
-                      "transition-colors hover:text-foreground/80",
-                      pathname.startsWith('/admin')
-                        ? "text-foreground"
-                        : "text-foreground/60"
-                    )}
-                  >
-                    <div className="flex items-center gap-1">
-                      <Shield className="h-4 w-4" />
-                      Admin
-                    </div>
-                  </Link>
-                )}
               </div>
             </SheetContent>
           </Sheet>
