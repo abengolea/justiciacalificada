@@ -76,7 +76,7 @@ export function SiteHeader() {
             <nav className="flex items-center space-x-6 text-sm font-medium">
               {mainNav.map((item) => (
                 <Link
-                  key={item.href}
+                  key={item.title}
                   href={item.href}
                   className={cn(
                     "transition-colors hover:text-primary",
@@ -130,7 +130,7 @@ export function SiteHeader() {
               <div className="flex flex-col space-y-3">
                 {mainNav.map((item) => (
                   <Link
-                    key={item.href}
+                    key={item.title}
                     href={item.href}
                     className={cn(
                       "transition-colors hover:text-primary",
