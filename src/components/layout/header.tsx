@@ -10,11 +10,9 @@ import {
   Facebook,
   Twitter,
   Instagram,
-  User as UserIcon,
   ChevronDown,
 } from 'lucide-react';
 import { AppLogo } from '@/components/icons';
-import { mockUsers } from '@/lib/data';
 import {
   Collapsible,
   CollapsibleContent,
@@ -29,8 +27,6 @@ export function SiteHeader() {
   }, []);
 
   const pathname = usePathname();
-  // Simulación de sesión de usuario.
-  const user = mockUsers.find((u) => u.role === 'admin');
 
   const mainNav: {
     title: string;
@@ -64,23 +60,6 @@ export function SiteHeader() {
             </a>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            {user ? (
-              <>
-                <Button variant="secondary" size="sm" asChild className="h-8">
-                  <Link href="#">
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    Prueba
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-header-foreground hover:bg-white/10 hover:text-white"
-                >
-                  Salir
-                </Button>
-              </>
-            ) : (
               <>
                 <Button variant="secondary" size="sm" asChild className="h-8">
                   <Link href="/login">Ingresar</Link>
@@ -94,7 +73,6 @@ export function SiteHeader() {
                   <Link href="/register">Registrarse</Link>
                 </Button>
               </>
-            )}
             <div className="hidden sm:flex items-center gap-3">
               <a href="#" aria-label="Facebook">
                 <Facebook className="h-4 w-4" />
