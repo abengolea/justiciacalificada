@@ -13,6 +13,7 @@ import { CourthouseCard } from "./courthouse-card";
 import type { Courthouse, Rating } from "@/lib/types";
 import { ratingCategories } from "@/lib/types";
 import { Search } from "lucide-react";
+import { mockProvincias } from "@/lib/data";
 
 interface CourthouseListProps {
   courthouses: Courthouse[];
@@ -28,11 +29,11 @@ export default function CourthouseList({
   const [fueroFilter, setFueroFilter] = useState("all");
 
   const provincias = useMemo(
-    () => ["all", ...new Set(courthouses.map((c) => c.provincia))],
-    [courthouses]
+    () => ["all", ...mockProvincias.map((p) => p.nombre).sort()],
+    []
   );
   const fueros = useMemo(
-    () => ["all", ...new Set(courthouses.map((c) => c.fuero))],
+    () => ["all", ...Array.from(new Set(courthouses.map((c) => c.fuero))).sort()],
     [courthouses]
   );
 

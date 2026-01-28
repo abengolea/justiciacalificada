@@ -1,4 +1,4 @@
-import type { Courthouse, Rating, User } from "./types";
+import type { Courthouse, Rating, User, Provincia } from "./types";
 
 export const mockUsers: User[] = [
   {
@@ -28,6 +28,35 @@ export const mockUsers: User[] = [
     role: 'user',
     status: 'pending',
   },
+];
+
+export const mockProvincias: Provincia[] = [
+  { id: 1, nombre: 'Buenos Aires' },
+  { id: 2, nombre: 'Catamarca' },
+  { id: 3, nombre: 'Chaco' },
+  { id: 4, nombre: 'Chubut' },
+  { id: 5, nombre: 'Ciudad Autónoma de Buenos Aires' },
+  { id: 6, nombre: 'Corrientes' },
+  { id: 7, nombre: 'Córdoba' },
+  { id: 8, nombre: 'Entre Ríos' },
+  { id: 9, nombre: 'Formosa' },
+  { id: 10, nombre: 'Jujuy' },
+  { id: 11, nombre: 'La Pampa' },
+  { id: 12, nombre: 'La Rioja' },
+  { id: 13, nombre: 'Mendoza' },
+  { id: 14, nombre: 'Misiones' },
+  { id: 15, nombre: 'Neuquén' },
+  { id: 16, nombre: 'Río Negro' },
+  { id: 17, nombre: 'Salta' },
+  { id: 18, nombre: 'San Juan' },
+  { id: 19, nombre: 'San Luis' },
+  { id: 20, nombre: 'Santa Cruz' },
+  { id: 21, nombre: 'Santa Fe' },
+  { id: 22, nombre: 'Santiago del Estero' },
+  { id: 23, nombre: 'Tierra del Fuego' },
+  { id: 24, nombre: 'Tucumán' },
+  { id: 25, nombre: 'Justicia Federal' },
+  { id: 26, nombre: 'Justicia Nacional' },
 ];
 
 export const mockCourthouses: Courthouse[] = [

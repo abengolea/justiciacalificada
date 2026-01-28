@@ -9,6 +9,11 @@ export interface Courthouse {
   telefono: string;
 }
 
+export interface Provincia {
+  id: number;
+  nombre: string;
+}
+
 export interface RatingCategories {
   calidadResoluciones: number;
   rapidezResoluciones: number;
