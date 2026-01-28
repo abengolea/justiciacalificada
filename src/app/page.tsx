@@ -51,68 +51,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="how-it-works" className="w-full py-12 md:py-24 lg:py-32">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col items-center justify-center space-y-4 text-center">
-            <div className="space-y-2">
-              <div className="inline-block rounded-lg bg-secondary/10 px-3 py-1 text-sm text-secondary-foreground">
-                Cómo Funciona
-              </div>
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">
-                Una Plataforma Transparente y Colaborativa
-              </h2>
-              <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Utilizando su matrícula profesional de abogado puede registrarse
-                para calificar y comentar, en forma anónima, cada uno de los
-                Juzgados de Argentina. Su participación responsable ayudará a
-                obtener datos estadísticos que sirvan de referencia a toda la
-                comunidad.
-              </p>
-            </div>
-          </div>
-          <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 lg:gap-16 mt-12">
-            <Card className="text-center">
-              <CardHeader>
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
-                  <Users className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="font-headline">
-                  Regístrese como Abogado
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground">
-                Cree su cuenta verificando su matrícula profesional para
-                asegurar la calidad de los datos.
-              </CardContent>
-            </Card>
-            <Card className="text-center">
-              <CardHeader>
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
-                  <Scale className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="font-headline">Califique Juzgados</CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground">
-                Evalúe su experiencia de forma anónima en múltiples categorías y
-                deje comentarios constructivos.
-              </CardContent>
-            </Card>
-            <Card className="text-center">
-              <CardHeader>
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
-                  <FileText className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="font-headline">Consulte Estadísticas</CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground">
-                Acceda a datos y análisis para entender el desempeño de los
-                diferentes juzgados del país.
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       <section className="w-full py-12 md:py-24 lg:py-32 bg-card">
         <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
           <div className="space-y-3">

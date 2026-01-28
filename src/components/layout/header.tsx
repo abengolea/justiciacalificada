@@ -16,7 +16,7 @@ export function SiteHeader() {
 
   const mainNav = [
     { title: "DEPENDENCIAS", href: "/juzgados" },
-    { title: "CÓMO FUNCIONA", href: "/#how-it-works" },
+    { title: "CÓMO FUNCIONA", href: "/como-funciona" },
     { title: "PRIVACIDAD", href: "#" },
     { title: "CONTACTO", href: "#" },
   ];
