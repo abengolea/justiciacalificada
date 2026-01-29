@@ -4221,26 +4221,6 @@ export const mockCourthouses: Courthouse[] = [
     telefono: ''
   },
   {
-    id: 'juzgado-601',
-    nombre: 'Juzgado Federal de San Nicolas n° 1 - Secretaria n° 1',
-    provincia: 'Justicia Federal',
-    ciudad: 'San Nicolas de los Arroyos',
-    fuero: 'Federal',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-602',
-    nombre: 'Juzgado Federal de San Nicolas n° 1 - Secretaria n° 3',
-    provincia: 'Justicia Federal',
-    ciudad: 'San Nicolas de los Arroyos',
-    fuero: 'Federal',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
     id: 'juzgado-603',
     nombre: 'Juzgado Federal N° 1 - San Nicolas',
     provincia: 'Justicia Federal',
@@ -8962,7 +8942,7 @@ export const mockCourthouses: Courthouse[] = [
   },
   {
     id: 'juzgado-1086',
-    nombre: 'Cámara de Apelaciones en lo Civil y Comercial - Sala N° 2',
+    nombre: 'Cámara Nacional de Apelaciones en lo Civil y Comercial - Sala N° 2',
     provincia: 'Justicia Nacional',
     ciudad: 'CABA',
     fuero: 'Civil y Comercial, Nacional',
@@ -8972,7 +8952,7 @@ export const mockCourthouses: Courthouse[] = [
   },
   {
     id: 'juzgado-1087',
-    nombre: 'Cámara de Apelaciones en lo Civil y Comercial - Sala n°3',
+    nombre: 'Cámara Nacional de Apelaciones en lo Civil y Comercial - Sala n°3',
     provincia: 'Justicia Nacional',
     ciudad: 'CABA',
     fuero: 'Civil y Comercial, Nacional',
@@ -8982,7 +8962,7 @@ export const mockCourthouses: Courthouse[] = [
   },
   {
     id: 'juzgado-1088',
-    nombre: 'Cámara de Apelaciones en lo Civil y Comercial - Sala N° 4',
+    nombre: 'Cámara Nacional de Apelaciones en lo Civil y Comercial - Sala N° 4',
     provincia: 'Justicia Nacional',
     ciudad: 'CABA',
     fuero: 'Civil y Comercial, Nacional',
@@ -21551,46 +21531,6 @@ export const mockCourthouses: Courthouse[] = [
     telefono: ''
   },
   {
-    id: 'juzgado-2384',
-    nombre: 'Juzgado en lo Civil y Comercial N° 1',
-    provincia: 'Buenos Aires',
-    ciudad: 'Dolores',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2385',
-    nombre: 'Juzgado en lo Civil y Comercial N° 2',
-    provincia: 'Buenos Aires',
-    ciudad: 'Dolores',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2386',
-    nombre: 'Juzgado en lo Civil y Comercial N° 3',
-    provincia: 'Buenos Aires',
-    ciudad: 'Dolores',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2387',
-    nombre: 'Juzgado en lo Civil y Comercial N° 4',
-    provincia: 'Buenos Aires',
-    ciudad: 'Dolores',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
     id: 'juzgado-2388',
     nombre: 'Juzgado en lo Contencioso Administrativo N° 1',
     provincia: 'Buenos Aires',
@@ -23177,196 +23117,6 @@ export const mockCourthouses: Courthouse[] = [
     ciudad: 'La Plata',
     fuero: 'Penal',
     instancia: 'Cámara',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2548',
-    nombre: 'Juzgado en lo Civil y Comercial N° 1',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2549',
-    nombre: 'Juzgado en lo Civil y Comercial N° 2',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2550',
-    nombre: 'Juzgado en lo Civil y Comercial N° 3',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2551',
-    nombre: 'Juzgado en lo Civil y Comercial N° 4',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2552',
-    nombre: 'Juzgado en lo Civil y Comercial N° 5',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2553',
-    nombre: 'Juzgado en lo Civil y Comercial N° 6',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2554',
-    nombre: 'Juzgado en lo Civil y Comercial N° 7',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2555',
-    nombre: 'Juzgado en lo Civil y Comercial N° 8',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2556',
-    nombre: 'Juzgado en lo Civil y Comercial N° 9',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2557',
-    nombre: 'Juzgado en lo Civil y Comercial N° 10',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2558',
-    nombre: 'Juzgado en lo Civil y Comercial N° 11',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2559',
-    nombre: 'Juzgado en lo Civil y Comercial N° 12',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2560',
-    nombre: 'Juzgado en lo Civil y Comercial N° 13',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2561',
-    nombre: 'Juzgado en lo Civil y Comercial N° 14',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2562',
-    nombre: 'Juzgado en lo Civil y Comercial N° 15',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2563',
-    nombre: 'Juzgado en lo Civil y Comercial N° 16',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2564',
-    nombre: 'Juzgado en lo Civil y Comercial N° 17',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2565',
-    nombre: 'Juzgado en lo Civil y Comercial N° 18',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-2566',
-    nombre: 'Juzgado en lo Civil y Comercial N° 19',
-    provincia: 'Corrientes',
-    ciudad: 'La Plata',
-    fuero: 'Civil y Comercial',
-    instancia: 'Primera Instancia',
     direccion: '',
     telefono: ''
   },
@@ -30072,7 +29822,7 @@ export const mockCourthouses: Courthouse[] = [
   },
   {
     id: 'juzgado-3258',
-    nombre: 'Juzgado de 1a Instancia en lo Civil, Comercial, de Conciliación y de Familia de 1ra Nominación',
+    nombre: 'Juzgado de 1a Instancia en lo Civil y Comercial, de Conciliación y de Familia de 1ra Nominación',
     provincia: 'Córdoba',
     ciudad: 'Marcos Juarez',
     fuero: 'Civil, Comercial, Familia',
@@ -30082,7 +29832,7 @@ export const mockCourthouses: Courthouse[] = [
   },
   {
     id: 'juzgado-3259',
-    nombre: 'Juzgado de 1a Instancia en lo Civil, Comercial, de Conciliación y de Familia de 2da Nominación',
+    nombre: 'Juzgado de 1a Instancia en lo Civil y Comercial, de Conciliación y de Familia de 2da Nominación',
     provincia: 'Córdoba',
     ciudad: 'Marcos Juarez',
     fuero: 'Civil, Comercial, Familia',
@@ -35593,26 +35343,6 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-4023',
     nombre: 'Juzgado Federal de Santa Fe N° 2',
-    provincia: 'Justicia Federal',
-    ciudad: 'Santa Fe',
-    fuero: 'Federal',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-4024',
-    nombre: 'Juzgado Federal de San Nicolás N° 1',
-    provincia: 'Justicia Federal',
-    ciudad: 'Santa Fe',
-    fuero: 'Federal',
-    instancia: 'Primera Instancia',
-    direccion: '',
-    telefono: ''
-  },
-  {
-    id: 'juzgado-4025',
-    nombre: 'Juzgado Federal de San Nicolás N° 2',
     provincia: 'Justicia Federal',
     ciudad: 'Santa Fe',
     fuero: 'Federal',
