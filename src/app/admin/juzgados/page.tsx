@@ -63,8 +63,10 @@ export default function AdminCourthousesPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [courthouseIdToDelete, setCourthouseIdToDelete] = useState<string | null>(null);
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
 
   const form = useForm<Courthouse>();
+  const bulkEditForm = useForm<{ dependencia?: string; fuero?: string; instancia?: string; ciudad?: string; }>();
 
   useEffect(() => {
     if (editingCourthouse) {
@@ -215,6 +217,39 @@ export default function AdminCourthousesPage() {
     }
     setEditingCourthouse(null);
   };
+  
+  const handleBulkUpdate = (data: { dependencia?: string; fuero?: string; instancia?: string; ciudad?: string }) => {
+    const updates = Object.fromEntries(
+        Object.entries(data).filter(([, value]) => value && value.trim() !== '')
+    );
+
+    if (Object.keys(updates).length === 0) {
+        toast({
+            variant: 'destructive',
+            title: 'No se realizaron cambios',
+            description: 'Por favor, complete al menos un campo para actualizar.',
+        });
+        return;
+    }
+
+    setCourthouses(prev =>
+        prev.map(c => {
+            if (selectedRows.includes(c.id)) {
+                return { ...c, ...updates };
+            }
+            return c;
+        })
+    );
+
+    toast({
+        title: 'Actualización en bloque exitosa',
+        description: `${selectedRows.length} juzgados han sido modificados.`,
+    });
+
+    setShowBulkEditDialog(false);
+    bulkEditForm.reset();
+    setSelectedRows([]);
+  };
 
   const handleFindDuplicates = () => {
     setShowDuplicatesOnly(prev => !prev);
@@ -279,6 +314,10 @@ export default function AdminCourthousesPage() {
               <Button variant="destructive" onClick={() => setShowBulkDeleteConfirm(true)}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Eliminar ({selectedRows.length})
+              </Button>
+              <Button variant="outline" onClick={() => setShowBulkEditDialog(true)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Editar en bloque ({selectedRows.length})
               </Button>
               <span className="text-sm text-muted-foreground">{selectedRows.length} seleccionado(s)</span>
           </div>
@@ -432,6 +471,51 @@ export default function AdminCourthousesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showBulkEditDialog} onOpenChange={setShowBulkEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar en Bloque ({selectedRows.length} juzgados)</DialogTitle>
+            <DialogDescription>
+              Solo los campos que complete se aplicarán a los juzgados seleccionados. Deje un campo en blanco para no modificarlo.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={bulkEditForm.handleSubmit(handleBulkUpdate)} className="space-y-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="bulk-dependencia">Dependencia</Label>
+              <Select onValueChange={(value) => bulkEditForm.setValue('dependencia', value)} >
+                  <SelectTrigger id="bulk-dependencia">
+                      <SelectValue placeholder="Seleccionar nueva dependencia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {dependencias.filter(d => d !== 'all').map((p) => (
+                          <SelectItem key={p} value={p}>
+                              {p}
+                          </SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="bulk-ciudad">Ciudad</Label>
+              <Input id="bulk-ciudad" {...bulkEditForm.register('ciudad')} placeholder="Nueva ciudad"/>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="bulk-fuero">Fuero</Label>
+              <Input id="bulk-fuero" {...bulkEditForm.register('fuero')} placeholder="Nuevo fuero"/>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="bulk-instancia">Instancia</Label>
+              <Input id="bulk-instancia" {...bulkEditForm.register('instancia')} placeholder="Nueva instancia"/>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => { setShowBulkEditDialog(false); bulkEditForm.reset(); }}>Cancelar</Button>
+              <Button type="submit">Aplicar Cambios</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
