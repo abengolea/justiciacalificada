@@ -38,6 +38,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import type { Courthouse } from '@/lib/types';
 import { useForm } from 'react-hook-form';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminCourthousesPage() {
   const [courthouses, setCourthouses] = useState<Courthouse[]>(mockCourthouses);
@@ -47,6 +48,7 @@ export default function AdminCourthousesPage() {
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [editingCourthouse, setEditingCourthouse] = useState<Courthouse | null>(null);
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<Courthouse>();
 
@@ -131,7 +133,6 @@ export default function AdminCourthousesPage() {
   };
 
   const handleCreate = () => {
-    // Logic for creating a new courthouse
     const newCourthouse: Courthouse = {
       id: `courthouse-${Date.now()}`,
       nombre: 'Nuevo Juzgado',
@@ -148,13 +149,22 @@ export default function AdminCourthousesPage() {
   const handleSingleDelete = (id: string) => {
     if (window.confirm('¿Está seguro de que desea eliminar este juzgado?')) {
       setCourthouses((prev) => prev.filter((c) => c.id !== id));
+      toast({
+        title: 'Juzgado eliminado',
+        description: 'El juzgado ha sido eliminado correctamente.',
+      });
     }
   };
 
   const handleBulkDelete = () => {
      if (window.confirm(`¿Está seguro de que desea eliminar ${selectedRows.length} juzgado(s) seleccionados?`)) {
+        const count = selectedRows.length;
         setCourthouses((prev) => prev.filter((c) => !selectedRows.includes(c.id)));
         setSelectedRows([]);
+        toast({
+          title: `${count} juzgado(s) eliminado(s)`,
+          description: 'Los juzgados seleccionados han sido eliminados.',
+        });
      }
   }
 
@@ -162,8 +172,10 @@ export default function AdminCourthousesPage() {
     const isNew = !courthouses.some(c => c.id === data.id);
     if (isNew) {
         setCourthouses([data, ...courthouses]);
+        toast({ title: 'Juzgado Creado', description: 'El nuevo juzgado ha sido añadido.' });
     } else {
         setCourthouses(courthouses.map((c) => c.id === data.id ? data : c));
+        toast({ title: 'Juzgado Actualizado', description: 'Los cambios en el juzgado han sido guardados.' });
     }
     setEditingCourthouse(null);
   };

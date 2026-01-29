@@ -9,17 +9,27 @@ import { Rating } from '@/lib/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminCommentsPage() {
   const [ratings, setRatings] = useState<Rating[]>(mockRatings);
+  const { toast } = useToast();
 
   const handleUpdateStatus = (id: string, status: 'approved' | 'rejected') => {
     setRatings(ratings.map((r) => r.id === id ? { ...r, status } : r));
+    toast({
+      title: 'Comentario actualizado',
+      description: `El comentario ha sido ${status === 'approved' ? 'aprobado' : 'rechazado'}.`,
+    });
   };
   
   const handleDelete = (id: string) => {
     if (window.confirm('¿Está seguro de que desea eliminar este comentario permanentemente?')) {
       setRatings((prev) => prev.filter((r) => r.id !== id));
+      toast({
+        title: 'Comentario eliminado',
+        description: 'El comentario ha sido eliminado permanentemente.',
+      });
     }
   };
 

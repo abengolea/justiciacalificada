@@ -21,25 +21,45 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { User } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>(mockUsers);
+  const { toast } = useToast();
 
   const handleCreate = () => {
     console.log('Crear nuevo usuario');
+    toast({
+      title: 'Función no implementada',
+      description: 'La creación de usuarios se implementará en una futura versión.',
+      variant: 'destructive',
+    });
   };
 
   const handleEdit = (id: string) => {
     console.log('Editar usuario:', id);
+    toast({
+      title: 'Función no implementada',
+      description: 'La edición de usuarios se implementará en una futura versión.',
+      variant: 'destructive',
+    });
   };
   
   const handleUpdateStatus = (id: string, status: 'approved') => {
     setUsers(users.map((u) => u.id === id ? { ...u, status } : u));
+    toast({
+      title: 'Usuario aprobado',
+      description: 'El registro del usuario ha sido aprobado.',
+    });
   };
 
   const handleDelete = (id: string) => {
     if (window.confirm('¿Está seguro de que desea eliminar este usuario?')) {
       setUsers((prev) => prev.filter((u) => u.id !== id));
+      toast({
+        title: 'Usuario eliminado',
+        description: 'El usuario ha sido eliminado correctamente.',
+      });
     }
   };
   
