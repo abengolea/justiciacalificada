@@ -82,6 +82,18 @@ export default function AdminCourthousesPage() {
     [courthouses]
   );
   
+  const normalizeForDuplicateCheck = (text: string) => {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .trim()
+      // eslint-disable-next-line no-irregular-whitespace
+      .replace(/n°|nº|nâ°|no\./g, 'n') // Standardize number abbreviations
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
+      .replace(/[^a-z0-9\s]/gi, '')   // Remove all non-alphanumeric characters (except spaces)
+      .replace(/\s\s+/g, ' ');       // Collapse whitespace
+  };
+
   const filteredCourthouses = useMemo(() => {
     const searchWords = searchTerm.toLowerCase().split(' ').filter(Boolean);
 
@@ -113,17 +125,21 @@ export default function AdminCourthousesPage() {
 
     if (showDuplicatesOnly) {
       const nameAndCityCounts = displayCourthouses.reduce((acc, c) => {
-        const key = `${c.nombre.toLowerCase().trim()}|${c.ciudad.toLowerCase().trim()}`;
+        const key = `${normalizeForDuplicateCheck(c.nombre)}|${normalizeForDuplicateCheck(c.ciudad)}`;
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
-
+      
       const duplicateKeys = Object.keys(nameAndCityCounts).filter(key => nameAndCityCounts[key] > 1);
 
       displayCourthouses = displayCourthouses.filter(c => {
-        const key = `${c.nombre.toLowerCase().trim()}|${c.ciudad.toLowerCase().trim()}`;
+        const key = `${normalizeForDuplicateCheck(c.nombre)}|${normalizeForDuplicateCheck(c.ciudad)}`;
         return duplicateKeys.includes(key);
-      }).sort((a, b) => a.nombre.localeCompare(b.nombre) || a.ciudad.localeCompare(b.ciudad));
+      }).sort((a, b) => {
+        const keyA = `${normalizeForDuplicateCheck(a.nombre)}|${normalizeForDuplicateCheck(a.ciudad)}`;
+        const keyB = `${normalizeForDuplicateCheck(b.nombre)}|${normalizeForDuplicateCheck(b.ciudad)}`;
+        return keyA.localeCompare(keyB);
+      });
     }
 
     return displayCourthouses;
