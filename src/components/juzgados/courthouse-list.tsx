@@ -38,10 +38,15 @@ export default function CourthouseList({
   );
 
   const filteredCourthouses = useMemo(() => {
+    const searchTermLower = searchTerm.toLowerCase();
     return courthouses.filter((courthouse) => {
       const searchMatch =
-        courthouse.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        courthouse.ciudad.toLowerCase().includes(searchTerm.toLowerCase());
+        courthouse.nombre.toLowerCase().includes(searchTermLower) ||
+        courthouse.ciudad.toLowerCase().includes(searchTermLower) ||
+        courthouse.provincia.toLowerCase().includes(searchTermLower) ||
+        courthouse.fuero.toLowerCase().includes(searchTermLower) ||
+        courthouse.instancia.toLowerCase().includes(searchTermLower);
+      
       const provinciaMatch =
         provinciaFilter === "all" || courthouse.provincia === provinciaFilter;
       const fueroMatch = fueroFilter === "all" || courthouse.fuero === fueroFilter;
@@ -74,10 +79,10 @@ export default function CourthouseList({
     <div>
       <div className="mb-6 p-4 bg-card rounded-lg shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative">
+          <div className="relative md:col-span-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre o ciudad..."
+              placeholder="Buscar por nombre, ciudad, fuero..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
