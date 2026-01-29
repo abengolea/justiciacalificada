@@ -87,6 +87,7 @@ export default function AdminCourthousesPage() {
     return text
       .toLowerCase()
       .trim()
+      .replace(/\s+en\s+lo\s+/g, ' ') // Remove " en lo "
       // eslint-disable-next-line no-irregular-whitespace
       .replace(/n°|nº|nâ°|no\./g, 'n') // Standardize number abbreviations
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
