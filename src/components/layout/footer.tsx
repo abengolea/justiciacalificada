@@ -8,7 +8,7 @@ export function SiteFooter() {
 
   return (
     <footer className="border-t">
-      <div className="container py-8">
+      <div className="container relative py-8">
         <div className="flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
           <div className="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
             <AppLogo className="h-8 w-8" />
@@ -23,14 +23,14 @@ export function SiteFooter() {
              <Link href="/como-funciona" className="hover:text-foreground">Cómo Funciona</Link>
              <Link href="/terminos-y-condiciones" className="hover:text-foreground">Privacidad</Link>
              <Link href="/contacto" className="hover:text-foreground">Contacto</Link>
-            {user?.role === 'admin' && (
-              <Link href="/admin" className="hover:text-foreground" title="Admin">
-                <Shield className="h-4 w-4" />
-                <span className="sr-only">Admin</span>
-              </Link>
-            )}
           </div>
         </div>
+        {user?.role === 'admin' && (
+            <Link href="/admin" className="absolute bottom-4 right-4 hover:text-foreground" title="Admin">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <span className="sr-only">Admin</span>
+            </Link>
+        )}
       </div>
     </footer>
   );
