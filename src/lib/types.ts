@@ -1,7 +1,7 @@
 export interface Courthouse {
   id: string;
   nombre: string;
-  provincia: string;
+  dependencia: string;
   ciudad: string;
   fuero: string;
   instancia: string;
@@ -9,7 +9,7 @@ export interface Courthouse {
   telefono: string;
 }
 
-export interface Provincia {
+export interface Dependencia {
   id: number;
   nombre: string;
 }

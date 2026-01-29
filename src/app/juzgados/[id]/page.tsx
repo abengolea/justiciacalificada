@@ -127,7 +127,7 @@ export default function CourthouseDetailPage({
                   <MapPin className="w-4 h-4 text-muted-foreground" />
                   <span>
                     {courthouse.direccion}, {courthouse.ciudad},{" "}
-                    {courthouse.provincia}
+                    {courthouse.dependencia}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { mockCourthouses, mockProvincias } from '@/lib/data';
+import { mockCourthouses, mockDependencias } from '@/lib/data';
 import {
   Table,
   TableBody,
@@ -42,10 +42,11 @@ import { useForm } from 'react-hook-form';
 export default function AdminCourthousesPage() {
   const [courthouses, setCourthouses] = useState<Courthouse[]>(mockCourthouses);
   const [searchTerm, setSearchTerm] = useState('');
-  const [provinciaFilter, setProvinciaFilter] = useState('all');
+  const [dependenciaFilter, setDependenciaFilter] = useState('all');
   const [fueroFilter, setFueroFilter] = useState('all');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [editingCourthouse, setEditingCourthouse] = useState<Courthouse | null>(null);
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
 
   const form = useForm<Courthouse>();
 
@@ -55,8 +56,8 @@ export default function AdminCourthousesPage() {
     }
   }, [editingCourthouse, form]);
 
-  const provincias = useMemo(
-    () => ['all', ...mockProvincias.map((p) => p.nombre).sort()],
+  const dependencias = useMemo(
+    () => ['all', ...mockDependencias.map((p) => p.nombre).sort()],
     []
   );
 
@@ -68,12 +69,12 @@ export default function AdminCourthousesPage() {
   const filteredCourthouses = useMemo(() => {
     const searchWords = searchTerm.toLowerCase().split(' ').filter(Boolean);
 
-    return courthouses.filter((courthouse) => {
-      const provinciaMatch =
-        provinciaFilter === 'all' || courthouse.provincia === provinciaFilter;
+    let displayCourthouses = courthouses.filter((courthouse) => {
+      const dependenciaMatch =
+        dependenciaFilter === 'all' || courthouse.dependencia === dependenciaFilter;
       const fueroMatch = fueroFilter === 'all' || courthouse.fuero === fueroFilter;
 
-      if (!provinciaMatch || !fueroMatch) {
+      if (!dependenciaMatch || !fueroMatch) {
         return false;
       }
       
@@ -84,7 +85,7 @@ export default function AdminCourthousesPage() {
       const courthouseText = [
         courthouse.nombre,
         courthouse.ciudad,
-        courthouse.provincia,
+        courthouse.dependencia,
         courthouse.fuero,
         courthouse.instancia,
       ]
@@ -93,7 +94,25 @@ export default function AdminCourthousesPage() {
 
       return searchWords.every((word) => courthouseText.includes(word));
     });
-  }, [courthouses, searchTerm, provinciaFilter, fueroFilter]);
+
+    if (showDuplicatesOnly) {
+      const nameAndCityCounts = displayCourthouses.reduce((acc, c) => {
+        const key = `${c.nombre.toLowerCase().trim()}|${c.ciudad.toLowerCase().trim()}`;
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const duplicateKeys = Object.keys(nameAndCityCounts).filter(key => nameAndCityCounts[key] > 1);
+
+      displayCourthouses = displayCourthouses.filter(c => {
+        const key = `${c.nombre.toLowerCase().trim()}|${c.ciudad.toLowerCase().trim()}`;
+        return duplicateKeys.includes(key);
+      }).sort((a, b) => a.nombre.localeCompare(b.nombre) || a.ciudad.localeCompare(b.ciudad));
+    }
+
+    return displayCourthouses;
+
+  }, [courthouses, searchTerm, dependenciaFilter, fueroFilter, showDuplicatesOnly]);
 
   const handleSelectAll = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
@@ -116,7 +135,7 @@ export default function AdminCourthousesPage() {
     const newCourthouse: Courthouse = {
       id: `courthouse-${Date.now()}`,
       nombre: 'Nuevo Juzgado',
-      provincia: 'Buenos Aires',
+      dependencia: 'Buenos Aires',
       ciudad: 'La Plata',
       fuero: 'Civil y Comercial',
       instancia: 'Primera Instancia',
@@ -149,14 +168,24 @@ export default function AdminCourthousesPage() {
     setEditingCourthouse(null);
   };
 
+  const handleFindDuplicates = () => {
+    setShowDuplicatesOnly(prev => !prev);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">Gestionar Juzgados</h2>
-        <Button onClick={handleCreate}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Crear Juzgado
-        </Button>
+        <div className="flex gap-2">
+           <Button variant="outline" onClick={handleFindDuplicates}>
+            <Search className="mr-2 h-4 w-4" />
+            {showDuplicatesOnly ? "Mostrar Todos" : "Buscar Repetidos"}
+          </Button>
+          <Button onClick={handleCreate}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Crear Juzgado
+          </Button>
+        </div>
       </div>
 
       <div className="mb-4 p-4 bg-card rounded-lg border">
@@ -170,14 +199,14 @@ export default function AdminCourthousesPage() {
               className="pl-10"
             />
           </div>
-          <Select value={provinciaFilter} onValueChange={setProvinciaFilter}>
+          <Select value={dependenciaFilter} onValueChange={setDependenciaFilter}>
             <SelectTrigger>
-              <SelectValue placeholder="Filtrar por provincia" />
+              <SelectValue placeholder="Filtrar por dependencia" />
             </SelectTrigger>
             <SelectContent>
-              {provincias.map((p) => (
+              {dependencias.map((p) => (
                 <SelectItem key={p} value={p}>
-                  {p === "all" ? "Todas las provincias" : p}
+                  {p === "all" ? "Todas las dependencias" : p}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -222,7 +251,7 @@ export default function AdminCourthousesPage() {
               </TableHead>
               <TableHead>Nombre</TableHead>
               <TableHead>Ciudad</TableHead>
-              <TableHead>Provincia</TableHead>
+              <TableHead>Dependencia</TableHead>
               <TableHead>Fuero</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
@@ -238,7 +267,7 @@ export default function AdminCourthousesPage() {
                 </TableCell>
                 <TableCell className="font-medium">{courthouse.nombre}</TableCell>
                 <TableCell>{courthouse.ciudad}</TableCell>
-                <TableCell>{courthouse.provincia}</TableCell>
+                <TableCell>{courthouse.dependencia}</TableCell>
                 <TableCell>{courthouse.fuero}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
@@ -295,13 +324,13 @@ export default function AdminCourthousesPage() {
                           <Input id="ciudad" {...form.register('ciudad')} />
                         </div>
                          <div className="grid gap-2">
-                            <Label htmlFor="provincia">Provincia</Label>
-                            <Select onValueChange={(value) => form.setValue('provincia', value)} defaultValue={form.getValues('provincia')}>
+                            <Label htmlFor="dependencia">Dependencia</Label>
+                            <Select onValueChange={(value) => form.setValue('dependencia', value)} defaultValue={form.getValues('dependencia')}>
                                 <SelectTrigger>
-                                <SelectValue placeholder="Seleccionar provincia" />
+                                <SelectValue placeholder="Seleccionar dependencia" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                {mockProvincias.map((p) => (
+                                {mockDependencias.map((p) => (
                                     <SelectItem key={p.id} value={p.nombre}>
                                     {p.nombre}
                                     </SelectItem>

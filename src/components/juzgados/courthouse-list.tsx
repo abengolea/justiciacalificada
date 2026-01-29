@@ -13,7 +13,7 @@ import { CourthouseCard } from "./courthouse-card";
 import type { Courthouse, Rating } from "@/lib/types";
 import { ratingCategories } from "@/lib/types";
 import { Search } from "lucide-react";
-import { mockProvincias } from "@/lib/data";
+import { mockDependencias } from "@/lib/data";
 
 interface CourthouseListProps {
   courthouses: Courthouse[];
@@ -25,11 +25,11 @@ export default function CourthouseList({
   ratings,
 }: CourthouseListProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [provinciaFilter, setProvinciaFilter] = useState("all");
+  const [dependenciaFilter, setDependenciaFilter] = useState("all");
   const [fueroFilter, setFueroFilter] = useState("all");
 
-  const provincias = useMemo(
-    () => ["all", ...mockProvincias.map((p) => p.nombre).sort()],
+  const dependencias = useMemo(
+    () => ["all", ...mockDependencias.map((p) => p.nombre).sort()],
     []
   );
   const fueros = useMemo(
@@ -41,11 +41,11 @@ export default function CourthouseList({
     const searchWords = searchTerm.toLowerCase().split(' ').filter(Boolean);
 
     return courthouses.filter((courthouse) => {
-      const provinciaMatch =
-        provinciaFilter === "all" || courthouse.provincia === provinciaFilter;
+      const dependenciaMatch =
+        dependenciaFilter === "all" || courthouse.dependencia === dependenciaFilter;
       const fueroMatch = fueroFilter === "all" || courthouse.fuero === fueroFilter;
 
-      if (!provinciaMatch || !fueroMatch) {
+      if (!dependenciaMatch || !fueroMatch) {
         return false;
       }
       
@@ -56,7 +56,7 @@ export default function CourthouseList({
       const courthouseText = [
         courthouse.nombre,
         courthouse.ciudad,
-        courthouse.provincia,
+        courthouse.dependencia,
         courthouse.fuero,
         courthouse.instancia,
       ]
@@ -65,7 +65,7 @@ export default function CourthouseList({
 
       return searchWords.every((word) => courthouseText.includes(word));
     });
-  }, [courthouses, searchTerm, provinciaFilter, fueroFilter]);
+  }, [courthouses, searchTerm, dependenciaFilter, fueroFilter]);
 
   const getAverageRating = (juzgadoId: string) => {
     const relevantRatings = ratings.filter((r) => r.juzgadoId === juzgadoId && r.status === 'approved');
@@ -101,14 +101,14 @@ export default function CourthouseList({
               className="pl-10"
             />
           </div>
-          <Select value={provinciaFilter} onValueChange={setProvinciaFilter}>
+          <Select value={dependenciaFilter} onValueChange={setDependenciaFilter}>
             <SelectTrigger>
-              <SelectValue placeholder="Filtrar por provincia" />
+              <SelectValue placeholder="Filtrar por dependencia" />
             </SelectTrigger>
             <SelectContent>
-              {provincias.map((p) => (
+              {dependencias.map((p) => (
                 <SelectItem key={p} value={p}>
-                  {p === "all" ? "Todas las provincias" : p}
+                  {p === "all" ? "Todas las dependencias" : p}
                 </SelectItem>
               ))}
             </SelectContent>
