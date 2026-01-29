@@ -147,13 +147,13 @@ export default function AdminCourthousesPage() {
 
   const handleSingleDelete = (id: string) => {
     if (window.confirm('¿Está seguro de que desea eliminar este juzgado?')) {
-      setCourthouses(courthouses.filter((c) => c.id !== id));
+      setCourthouses((prev) => prev.filter((c) => c.id !== id));
     }
   };
 
   const handleBulkDelete = () => {
      if (window.confirm(`¿Está seguro de que desea eliminar ${selectedRows.length} juzgado(s) seleccionados?`)) {
-        setCourthouses(courthouses.filter((c) => !selectedRows.includes(c.id)));
+        setCourthouses((prev) => prev.filter((c) => !selectedRows.includes(c.id)));
         setSelectedRows([]);
      }
   }

@@ -39,7 +39,7 @@ export default function AdminUsersPage() {
 
   const handleDelete = (id: string) => {
     if (window.confirm('¿Está seguro de que desea eliminar este usuario?')) {
-      setUsers(users.filter((u) => u.id !== id));
+      setUsers((prev) => prev.filter((u) => u.id !== id));
     }
   };
   

@@ -19,7 +19,7 @@ export default function AdminCommentsPage() {
   
   const handleDelete = (id: string) => {
     if (window.confirm('¿Está seguro de que desea eliminar este comentario permanentemente?')) {
-      setRatings(ratings.filter((r) => r.id !== id));
+      setRatings((prev) => prev.filter((r) => r.id !== id));
     }
   };
 
