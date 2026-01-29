@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
 import {
   Card,
   CardContent,
@@ -28,10 +31,22 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import {
+  useFirebase,
+  setDocumentNonBlocking
+} from '@/firebase';
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from 'firebase/auth';
+import { doc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -77,6 +92,10 @@ const formSchema = z.object({
 
 export default function RegisterPage() {
   const { toast } = useToast();
+  const router = useRouter();
+  const { auth, firestore, storage } = useFirebase();
+  const [isLoading, setIsLoading] = useState(false);
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -90,16 +109,82 @@ export default function RegisterPage() {
 
   const fileRef = form.register('credencial');
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    toast({
-      title: 'Registro Enviado',
-      description:
-        'Su solicitud de registro ha sido enviada para verificación. Recibirá un email de confirmación.',
-      variant: 'default',
-    });
-    form.reset();
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true);
+    try {
+      // 1. Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // 2. Upload credential file to Firebase Storage
+      const file = values.credencial[0];
+      const storageRef = ref(storage, `credenciales/${user.uid}/${file.name}`);
+      await uploadBytes(storageRef, file);
+      const credencialUrl = await getDownloadURL(storageRef);
+
+      // 3. Create lawyer document in Firestore
+      const lawyerData = {
+        uid: user.uid,
+        nombre: values.nombre,
+        apellido: values.apellido,
+        email: values.email,
+        matricula: values.matricula,
+        fechaMatriculacion: values.fechaMatriculacion.toISOString(),
+        credencialUrl: credencialUrl,
+        role: 'user',
+        status: 'pending',
+        registrationDate: serverTimestamp(),
+      };
+
+      const lawyerDocRef = doc(firestore, "lawyers", user.uid);
+      setDocumentNonBlocking(lawyerDocRef, lawyerData, {});
+      
+      toast({
+        title: 'Registro Enviado',
+        description:
+          'Su solicitud ha sido enviada. Recibirá un email cuando su cuenta sea aprobada.',
+        variant: 'default',
+      });
+      router.push('/');
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      toast({
+        title: 'Error en el Registro',
+        description: error.message || 'Ocurrió un error. Por favor, intente de nuevo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
+  
+  async function handleGoogleSignIn() {
+    setIsLoading(true);
+    const provider = new GoogleAuthProvider();
+    try {
+        await signInWithPopup(auth, provider);
+        // On successful sign-in, Firebase's onAuthStateChanged listener
+        // will handle the user state. We can then redirect the user.
+        // We'll also need a Firestore document created for them if it doesn't exist.
+        // This logic is best handled in a central place, like the FirebaseProvider or a custom hook.
+        // For now, we redirect and assume the user profile will be created or checked elsewhere.
+        toast({
+            title: 'Inicio de sesión con Google exitoso',
+            description: "Serás redirigido a la página principal.",
+        });
+        router.push('/');
+    } catch (error: any) {
+        console.error("Google Sign-In Error", error);
+        toast({
+            title: "Error de inicio de sesión con Google",
+            description: "No se pudo iniciar sesión con Google. Inténtalo de nuevo.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoading(false);
+    }
+}
+
 
   return (
     <div className="container flex items-center justify-center py-12">
@@ -125,7 +210,7 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Nombre</FormLabel>
                       <FormControl>
-                        <Input placeholder="Juan" {...field} />
+                        <Input placeholder="Juan" {...field} disabled={isLoading}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -138,7 +223,7 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Apellido</FormLabel>
                       <FormControl>
-                        <Input placeholder="Pérez" {...field} />
+                        <Input placeholder="Pérez" {...field} disabled={isLoading}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -153,7 +238,7 @@ export default function RegisterPage() {
                   <FormItem>
                     <FormLabel>Matrícula Profesional</FormLabel>
                     <FormControl>
-                      <Input placeholder="Tomo 123 Folio 45" {...field} />
+                      <Input placeholder="Tomo 123 Folio 45" {...field} disabled={isLoading}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -175,6 +260,7 @@ export default function RegisterPage() {
                               'w-full pl-3 text-left font-normal',
                               !field.value && 'text-muted-foreground'
                             )}
+                            disabled={isLoading}
                           >
                             {field.value ? (
                               format(field.value, 'dd/MM/yyyy')
@@ -209,7 +295,7 @@ export default function RegisterPage() {
                   <FormItem>
                     <FormLabel>Foto de la Credencial</FormLabel>
                      <FormControl>
-                        <Input type="file" {...fileRef} />
+                        <Input type="file" {...fileRef} disabled={isLoading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -227,6 +313,7 @@ export default function RegisterPage() {
                         type="email"
                         placeholder="m@ejemplo.com"
                         {...field}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage />
@@ -240,7 +327,7 @@ export default function RegisterPage() {
                   <FormItem>
                     <FormLabel>Contraseña</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input type="password" {...field} disabled={isLoading}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -257,13 +344,14 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <Button variant="outline" type="button">
-                <GoogleIcon className="mr-2 h-4 w-4" />
+              <Button variant="outline" type="button" onClick={handleGoogleSignIn} disabled={isLoading}>
+                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2 h-4 w-4" />}
                 Registrarse con Google
               </Button>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Crear Cuenta
               </Button>
               <div className="mt-4 text-center text-sm text-muted-foreground">

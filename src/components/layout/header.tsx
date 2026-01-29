@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -11,6 +11,8 @@ import {
   Twitter,
   Instagram,
   ChevronDown,
+  User as UserIcon,
+  LogOut,
 } from 'lucide-react';
 import { AppLogo } from '@/components/icons';
 import {
@@ -18,15 +20,50 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect } from 'react';
+import { useUser, useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
+
 
 export function SiteHeader() {
   const [isClient, setIsClient] = useState(false);
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
+  
   useEffect(() => {
     setIsClient(true);
   }, []);
-
+  
   const pathname = usePathname();
+
+  const handleLogout = async () => {
+    try {
+        await signOut(auth);
+        toast({
+            title: "Sesión cerrada",
+            description: "Ha cerrado sesión correctamente."
+        });
+        router.push('/');
+    } catch (error) {
+        toast({
+            title: "Error al cerrar sesión",
+            description: "No se pudo cerrar la sesión. Por favor, intente de nuevo.",
+            variant: "destructive"
+        });
+    }
+  }
 
   const mainNav: {
     title: string;
@@ -45,6 +82,13 @@ export function SiteHeader() {
     },
     { title: 'CÓMO FUNCIONA', href: '/como-funciona' },
   ];
+  
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'U';
+    const names = name.split(' ').filter(Boolean);
+    if (names.length === 0) return 'U';
+    return names.map(n => n[0]).join('').toUpperCase();
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -60,19 +104,51 @@ export function SiteHeader() {
             </a>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-              <>
-                <Button variant="secondary" size="sm" asChild className="h-8">
-                  <Link href="/login">Ingresar</Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className="h-8 text-header-foreground hover:bg-white/10 hover:text-white"
-                >
-                  <Link href="/register">Registrarse</Link>
-                </Button>
-              </>
+              {isUserLoading ? (
+                <div className="h-8 w-32 bg-gray-600/50 animate-pulse rounded-md" />
+              ) : user ? (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="relative h-8 w-auto px-2 gap-2 text-header-foreground hover:bg-white/10 hover:text-white">
+                           <Avatar className="h-6 w-6">
+                                <AvatarImage src={user.photoURL ?? ''} alt={user.displayName ?? ''} />
+                                <AvatarFallback className="text-xs bg-secondary text-secondary-foreground">{getInitials(user.displayName)}</AvatarFallback>
+                           </Avatar>
+                           <span className="hidden sm:inline">{user.displayName ?? user.email}</span>
+                           <ChevronDown className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                        <DropdownMenuLabel className="font-normal">
+                            <div className="flex flex-col space-y-1">
+                                <p className="text-sm font-medium leading-none">{user.displayName}</p>
+                                <p className="text-xs leading-none text-muted-foreground">
+                                    {user.email}
+                                </p>
+                            </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout}>
+                            <LogOut className="mr-2 h-4 w-4" />
+                            <span>Cerrar Sesión</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <>
+                    <Button variant="secondary" size="sm" asChild className="h-8">
+                    <Link href="/login">Ingresar</Link>
+                    </Button>
+                    <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="h-8 text-header-foreground hover:bg-white/10 hover:text-white"
+                    >
+                    <Link href="/register">Registrarse</Link>
+                    </Button>
+                </>
+              )}
             <div className="hidden sm:flex items-center gap-3">
               <a href="#" aria-label="Facebook">
                 <Facebook className="h-4 w-4" />
