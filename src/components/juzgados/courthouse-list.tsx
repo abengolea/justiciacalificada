@@ -38,19 +38,32 @@ export default function CourthouseList({
   );
 
   const filteredCourthouses = useMemo(() => {
-    const searchTermLower = searchTerm.toLowerCase();
+    const searchWords = searchTerm.toLowerCase().split(' ').filter(Boolean);
+
     return courthouses.filter((courthouse) => {
-      const searchMatch =
-        courthouse.nombre.toLowerCase().includes(searchTermLower) ||
-        courthouse.ciudad.toLowerCase().includes(searchTermLower) ||
-        courthouse.provincia.toLowerCase().includes(searchTermLower) ||
-        courthouse.fuero.toLowerCase().includes(searchTermLower) ||
-        courthouse.instancia.toLowerCase().includes(searchTermLower);
-      
       const provinciaMatch =
         provinciaFilter === "all" || courthouse.provincia === provinciaFilter;
       const fueroMatch = fueroFilter === "all" || courthouse.fuero === fueroFilter;
-      return searchMatch && provinciaMatch && fueroMatch;
+
+      if (!provinciaMatch || !fueroMatch) {
+        return false;
+      }
+      
+      if (searchWords.length === 0) {
+        return true;
+      }
+
+      const courthouseText = [
+        courthouse.nombre,
+        courthouse.ciudad,
+        courthouse.provincia,
+        courthouse.fuero,
+        courthouse.instancia,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return searchWords.every((word) => courthouseText.includes(word));
     });
   }, [courthouses, searchTerm, provinciaFilter, fueroFilter]);
 
