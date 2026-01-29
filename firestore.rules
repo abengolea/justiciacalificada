@@ -1,0 +1,178 @@
+/**
+ * Core Philosophy: This ruleset establishes a security model for a lawyer-driven courthouse rating application.
+ * It provides a mix of private user-owned data, publicly readable content, and admin-managed entities.
+ * The primary goals are to ensure lawyers can only manage their own profiles and ratings, protect the integrity
+ * of courthouse data, and restrict sensitive operations to administrators.
+ *
+ * Data Structure:
+ * - /lawyers/{lawyerId}: Private user profiles, where the document ID matches the user's Auth UID.
+ * - /courthouses/{courthouseId}: Publicly available information about courthouses.
+ * - /courthouses/{courthouseId}/ratings/{ratingId}: User-submitted ratings, which are publicly readable.
+ * - /courthouses/{courthouseId}/statistics/{statisticId}: Publicly readable, aggregated statistics, not writable by clients.
+ * - /roles_admin/{uid}: A collection where the existence of a document grants a user admin privileges.
+ *
+ * Key Security Decisions:
+ * - Strict Ownership: A lawyer's profile in `/lawyers` is strictly private and can only be accessed or modified by the owner. Listing lawyers is disabled to prevent user enumeration.
+ * - Public Read, Admin Write: Core data like `/courthouses` is readable by anyone but can only be modified by users designated as admins via the `/roles_admin` collection.
+ * - Denormalized Ownership for Subcollections: Each `rating` document contains a `lawyerId` field. This denormalization is critical for security, allowing write-access checks directly on the document without needing expensive or impossible lookups to other collections.
+ * - Read-Only Data: Aggregated data like `/statistics` is completely locked down from client writes to ensure data integrity. These documents are expected to be updated by trusted server-side processes.
+ *
+ * Denormalization for Authorization:
+ * To create simpler, more performant rules, we denormalize the `lawyerId` onto each `rating` document. This allows a fast, simple rule like `isOwner(resource.data.lawyerId)` without any extra `get()` calls to check who created the rating.
+ *
+ * Structural Segregation:
+ * The data is naturally segregated into top-level collections based on access patterns (e.g., private `lawyers` vs. public `courthouses`), which is a secure and performant design.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------------
+    // Helper Functions
+    // ----------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the authenticated user's UID matches the provided userId.
+     * This is the foundation of the user-ownership model.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks if a document currently exists in Firestore.
+     * Crucial for all update and delete operations.
+     */
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+    /**
+     * Checks if the current user has an admin role.
+     * Admin status is granted by the existence of a document
+     * in the /roles_admin collection matching the user's UID.
+     */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /**
+     * Validates fields for a new lawyer profile on creation.
+     * Ensures the internal 'id' field matches the document's path ID (the UID).
+     */
+    function isValidNewLawyer(lawyerId) {
+      return request.resource.data.id == lawyerId;
+    }
+
+    /**
+     * Validates fields for a lawyer profile on update.
+     * Ensures the 'id' field remains unchanged to prevent re-associating the profile.
+     */
+    function isImmutableLawyerId() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * Validates a new rating document on creation.
+     * - The creator must be the signed-in user.
+     * - The courthouseId in the document must match the ID in the path.
+     */
+    function isValidNewRating(courthouseId) {
+      let isRatingCreator = request.resource.data.lawyerId == request.auth.uid;
+      let hasValidPath = request.resource.data.courthouseId == courthouseId;
+      return isSignedIn() && isRatingCreator && hasValidPath;
+    }
+
+    /**
+     * Ensures critical relational fields on a rating document are not changed during an update.
+     */
+    function areRatingFieldsImmutable() {
+      let isSameLawyer = request.resource.data.lawyerId == resource.data.lawyerId;
+      let isSameCourthouse = request.resource.data.courthouseId == resource.data.courthouseId;
+      return isSameLawyer && isSameCourthouse;
+    }
+
+
+    /**
+     * @description Stores lawyer profile data. A lawyer can only access and manage their own profile.
+     * @path /lawyers/{lawyerId}
+     * @allow (create) An authenticated user creating their own profile document, where {lawyerId} is their UID.
+     * @deny (get) A user trying to read another user's profile.
+     * @principle Restricts access to a user's own data tree and prevents user enumeration.
+     */
+    match /lawyers/{lawyerId} {
+      allow get: if isOwner(lawyerId);
+      allow list: if false;
+      allow create: if isOwner(lawyerId) && isValidNewLawyer(lawyerId);
+      allow update: if isOwner(lawyerId) && isExistingDoc() && isImmutableLawyerId();
+      allow delete: if isOwner(lawyerId) && isExistingDoc();
+    }
+
+    /**
+     * @description Stores public information about courthouses.
+     * @path /courthouses/{courthouseId}
+     * @allow (get) Any user, authenticated or not, can read courthouse data.
+     * @deny (create) A regular authenticated user trying to create a new courthouse.
+     * @principle Implements a "Public Read, Admin Write" model for globally relevant data.
+     */
+    match /courthouses/{courthouseId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && isExistingDoc();
+      allow delete: if isAdmin() && isExistingDoc();
+
+      /**
+       * @description Stores ratings for a specific courthouse, created by lawyers.
+       * @path /courthouses/{courthouseId}/ratings/{ratingId}
+       * @allow (create) An authenticated lawyer submitting a rating for this courthouse.
+       * @deny (update) A lawyer trying to modify a rating submitted by another lawyer.
+       * @principle Enforces document ownership for writes using a denormalized `lawyerId` field.
+       */
+      match /ratings/{ratingId} {
+        allow get: if true;
+        allow list: if true;
+        allow create: if isValidNewRating(courthouseId);
+        allow update: if isOwner(resource.data.lawyerId) && isExistingDoc() && areRatingFieldsImmutable();
+        allow delete: if isOwner(resource.data.lawyerId) && isExistingDoc();
+      }
+
+      /**
+       * @description Stores aggregated statistics for a courthouse. This data is read-only for all clients.
+       * @path /courthouses/{courthouseId}/statistics/{statisticId}
+       * @allow (get) Any user reading the courthouse statistics.
+       * @deny (create, update, delete) Any client trying to modify the statistics.
+       * @principle Protects the integrity of derived data by making it read-only from the client-side.
+       */
+      match /statistics/{statisticId} {
+        allow get: if true;
+        allow list: if true;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
+      }
+    }
+
+    /**
+     * @description Manages admin roles. The existence of a document grants admin privileges.
+     * @path /roles_admin/{uid}
+     * @allow (create, delete) An existing admin granting or revoking admin rights for another user.
+     * @deny (list, get, create) Any non-admin user trying to read or modify this collection.
+     * @principle Secures the role management system itself, ensuring only admins can manage roles.
+     */
+    match /roles_admin/{uid} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && isExistingDoc();
+      allow delete: if isAdmin() && isExistingDoc();
+    }
+  }
+}
