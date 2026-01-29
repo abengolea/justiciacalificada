@@ -5,7 +5,7 @@
  * of courthouse data, and restrict sensitive operations to administrators.
  *
  * Data Structure:
- * - /lawyers/{lawyerId}: Private user profiles, where the document ID matches the user's Auth UID.
+ * - /lawyers/{uid}: Private user profiles, where the document ID matches the user's Auth UID.
  * - /courthouses/{courthouseId}: Publicly available information about courthouses.
  * - /courthouses/{courthouseId}/ratings/{ratingId}: User-submitted ratings, which are publicly readable.
  * - /courthouses/{courthouseId}/statistics/{statisticId}: Publicly readable, aggregated statistics, not writable by clients.
@@ -65,19 +65,39 @@ service cloud.firestore {
 
     /**
      * Validates fields for a new lawyer profile on creation.
-     * Ensures the internal 'id' field matches the document's path ID (the UID).
+     * Ensures the internal 'uid' field matches the document's path ID (the UID).
+     * Enforces that new users are not admins and are pending approval.
      */
-    function isValidNewLawyer(lawyerId) {
-      return request.resource.data.id == lawyerId;
+    function isValidNewLawyer(uid) {
+      let data = request.resource.data;
+      return data.uid == uid &&
+             data.status == 'pending' &&
+             data.role == 'user';
     }
 
     /**
      * Validates fields for a lawyer profile on update.
-     * Ensures the 'id' field remains unchanged to prevent re-associating the profile.
+     * Ensures the 'uid' and other core fields remain unchanged to prevent re-associating the profile.
+     * Allows admins to change role and status.
      */
-    function isImmutableLawyerId() {
-      return request.resource.data.id == resource.data.id;
+    function isValidLawyerUpdate(uid) {
+        let isSameUser = request.resource.data.uid == resource.data.uid;
+        let isSameEmail = request.resource.data.email == resource.data.email;
+        let canUpdateProfile = request.resource.data.keys().hasAll(['nombre', 'apellido', 'matricula', 'fechaMatriculacion', 'credencialUrl']);
+
+        // Regular user can update their profile, but not their role or status
+        if (isOwner(uid) && !isAdmin()) {
+            let roleUnchanged = request.resource.data.role == resource.data.role;
+            let statusUnchanged = request.resource.data.status == resource.data.status;
+            return isSameUser && isSameEmail && canUpdateProfile && roleUnchanged && statusUnchanged;
+        }
+        // Admin can update role and status
+        if (isAdmin()) {
+            return isSameUser && isSameEmail;
+        }
+        return false;
     }
+
 
     /**
      * Validates a new rating document on creation.
@@ -102,17 +122,17 @@ service cloud.firestore {
 
     /**
      * @description Stores lawyer profile data. A lawyer can only access and manage their own profile.
-     * @path /lawyers/{lawyerId}
-     * @allow (create) An authenticated user creating their own profile document, where {lawyerId} is their UID.
+     * @path /lawyers/{uid}
+     * @allow (create) An authenticated user creating their own profile document, where {uid} is their UID.
      * @deny (get) A user trying to read another user's profile.
      * @principle Restricts access to a user's own data tree and prevents user enumeration.
      */
-    match /lawyers/{lawyerId} {
-      allow get: if isOwner(lawyerId);
-      allow list: if false;
-      allow create: if isOwner(lawyerId) && isValidNewLawyer(lawyerId);
-      allow update: if isOwner(lawyerId) && isExistingDoc() && isImmutableLawyerId();
-      allow delete: if isOwner(lawyerId) && isExistingDoc();
+    match /lawyers/{uid} {
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(uid) && isValidNewLawyer(uid);
+      allow update: if (isOwner(uid) || isAdmin()) && isExistingDoc() && isValidLawyerUpdate(uid);
+      allow delete: if isAdmin() && isExistingDoc();
     }
 
     /**

@@ -1,44 +1,74 @@
 {
   "entities": {
     "Lawyer": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Lawyer",
-      "type": "object",
       "description": "Represents a lawyer registered in the system.",
+      "type": "object",
       "properties": {
-        "id": {
+        "uid": {
           "type": "string",
-          "description": "Unique identifier for the lawyer."
+          "description": "The user's unique ID from Firebase Authentication."
+        },
+        "nombre": {
+          "type": "string",
+          "description": "First name of the lawyer."
+        },
+        "apellido": {
+          "type": "string",
+          "description": "Last name of the lawyer."
         },
         "email": {
           "type": "string",
-          "description": "Email address of the lawyer.",
-          "format": "email"
+          "format": "email",
+          "description": "Email address, used for login."
         },
-        "licenseNumber": {
+        "matricula": {
           "type": "string",
           "description": "Professional license number of the lawyer."
         },
-        "province": {
+        "fechaMatriculacion": {
           "type": "string",
-          "description": "Province where the lawyer is registered."
+          "format": "date-time",
+          "description": "Date of professional licensing."
         },
-        "isVerified": {
-          "type": "boolean",
-          "description": "Indicates if the lawyer's license has been verified."
+        "credencialUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the uploaded image of the lawyer's professional ID."
+        },
+        "role": {
+          "type": "string",
+          "description": "User role, either 'user' or 'admin'.",
+          "enum": [
+            "user",
+            "admin"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "description": "Registration status, 'pending' approval by an admin.",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected"
+          ]
         },
         "registrationDate": {
           "type": "string",
-          "description": "Date and time when the lawyer registered.",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "Timestamp of when the user registered."
         }
       },
       "required": [
-        "id",
+        "uid",
+        "nombre",
+        "apellido",
         "email",
-        "licenseNumber",
-        "province",
-        "isVerified",
+        "matricula",
+        "fechaMatriculacion",
+        "credencialUrl",
+        "role",
+        "status",
         "registrationDate"
       ]
     },
@@ -205,13 +235,14 @@
   "auth": {
     "providers": [
       "password",
-      "anonymous"
+      "anonymous",
+      "google.com"
     ]
   },
   "firestore": {
     "structure": [
       {
-        "path": "/lawyers/{lawyerId}",
+        "path": "/lawyers/{uid}",
         "definition": {
           "entityName": "Lawyer",
           "schema": {
@@ -220,7 +251,7 @@
           "description": "Stores lawyer profiles, using path-based ownership for security. Only the authenticated lawyer can read/write their own document.",
           "params": [
             {
-              "name": "lawyerId",
+              "name": "uid",
               "description": "The unique identifier for the lawyer, matching the Firebase Auth UID."
             }
           ]
@@ -299,6 +330,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the core features of the \"Justicia Calificada\" application, emphasizing secure authentication, courthouse ratings, and statistical analysis. The structure prioritizes authorization independence, clear security rules, and efficient data retrieval. Path-based ownership is used for lawyers, and a combination of path-based ownership and denormalization is employed to manage access to ratings and statistics.\n\n**Authorization Independence:** Lawyer profiles are stored directly under `/lawyers/{lawyerId}` which allows easy management of lawyer-specific data and authentication. The `Rating` documents under `/courthouses/{courthouseId}/ratings/{ratingId}` include the `lawyerId`, enabling security rules to verify that the authenticated user (`request.auth.uid`) matches the rating's `lawyerId`. This avoids the need for `get()` calls to the `/lawyers/{lawyerId}` collection to check ownership.\n\n**QAPs Support:** The structure supports Query Approval Patterns (QAPs) by segregating data based on access requirements. Lawyers' data are stored in `/lawyers/{lawyerId}`, which allows listing lawyers with appropriate filtering rules. Courthouse data in `/courthouses/{courthouseId}` allows public listing while statistics are managed separately in `/courthouses/{courthouseId}/statistics/{statisticId}`, enabling different security rules for each. Ratings are located in a subcollection, ensuring we can query ratings for a specific courthouse, and because each rating contains the lawyerId, we can filter/secure lists of ratings based on the authenticated lawyer.\n\n**Denormalization:** The `Rating` documents include the `lawyerId`. This is a form of denormalization to enable security rules to ensure that only the lawyer who created the rating can modify or delete it. This eliminates the need for server-side validation to verify the user's identity against the rating data.\n\n**Global Roles (DBAC):** Global admin roles are stored in `/roles_admin/{uid}`. The existence of a document in this collection grants administrative privileges.\n"
+    "reasoning": "The Firestore structure is designed to support the core features of the \"Justicia Calificada\" application, emphasizing secure authentication, courthouse ratings, and statistical analysis. The structure prioritizes authorization independence, clear security rules, and efficient data retrieval. Path-based ownership is used for lawyers, and a combination of path-based ownership and denormalization is employed to manage access to ratings and statistics.\n\n**Authorization Independence:** Lawyer profiles are stored directly under `/lawyers/{uid}` which allows easy management of lawyer-specific data and authentication. The `Rating` documents under `/courthouses/{courthouseId}/ratings/{ratingId}` include the `lawyerId`, enabling security rules to verify that the authenticated user (`request.auth.uid`) matches the rating's `lawyerId`. This avoids the need for `get()` calls to the `/lawyers/{uid}` collection to check ownership.\n\n**QAPs Support:** The structure supports Query Approval Patterns (QAPs) by segregating data based on access requirements. Lawyers' data are stored in `/lawyers/{uid}`, which allows listing lawyers with appropriate filtering rules. Courthouse data in `/courthouses/{courthouseId}` allows public listing while statistics are managed separately in `/courthouses/{courthouseId}/statistics/{statisticId}`, enabling different security rules for each. Ratings are located in a subcollection, ensuring we can query ratings for a specific courthouse, and because each rating contains the lawyerId, we can filter/secure lists of ratings based on the authenticated lawyer.\n\n**Denormalization:** The `Rating` documents include the `lawyerId`. This is a form of denormalization to enable security rules to ensure that only the lawyer who created the rating can modify or delete it. This eliminates the need for server-side validation to verify the user's identity against the rating data.\n\n**Global Roles (DBAC):** Global admin roles are stored in `/roles_admin/{uid}`. The existence of a document in this collection grants administrative privileges.\n"
   }
 }
