@@ -123,7 +123,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-155',
     nombre: 'Juzgado Civil y Comercial N° 1',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -133,7 +133,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-156',
     nombre: 'Juzgado Civil y Comercial N° 2',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -143,7 +143,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-157',
     nombre: 'Juzgado Civil y Comercial N° 3',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -153,7 +153,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-158',
     nombre: 'Juzgado Civil y Comercial N° 4',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -163,7 +163,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-159',
     nombre: 'Juzgado Civil y Comercial N° 5',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -173,7 +173,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-160',
     nombre: 'Juzgado Civil y Comercial N° 6',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -183,7 +183,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-161',
     nombre: 'Juzgado Civil y Comercial N° 7',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -193,7 +193,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-162',
     nombre: 'Juzgado Civil y Comercial N° 8',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -203,7 +203,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-163',
     nombre: 'Juzgado Civil y Comercial N° 9',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -213,7 +213,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-164',
     nombre: 'Juzgado Civil y Comercial N° 10',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -223,7 +223,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-165',
     nombre: 'Juzgado Civil y Comercial N° 11',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -233,7 +233,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-166',
     nombre: 'Juzgado Civil y Comercial N° 12',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -243,7 +243,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-167',
     nombre: 'Juzgado Civil y Comercial N° 13',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -253,7 +253,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-168',
     nombre: 'Juzgado Civil y Comercial N° 14',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -263,7 +263,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-169',
     nombre: 'Juzgado Civil y Comercial N° 15',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -273,7 +273,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-170',
     nombre: 'Juzgado Civil y Comercial N° 16',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -283,7 +283,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-171',
     nombre: 'Juzgado Civil y Comercial N° 17',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -293,7 +293,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-172',
     nombre: 'Juzgado Civil y Comercial N° 18',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -303,7 +303,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-173',
     nombre: 'Juzgado Civil y Comercial N° 19',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -313,7 +313,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-174',
     nombre: 'Juzgado Civil y Comercial N° 1',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -323,7 +323,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-175',
     nombre: 'Juzgado Civil y Comercial N° 2',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -333,7 +333,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-176',
     nombre: 'Juzgado Civil y Comercial N° 3',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -343,7 +343,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-177',
     nombre: 'Juzgado Civil y Comercial N° 4',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -353,7 +353,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-178',
     nombre: 'Juzgado Civil y Comercial N° 5',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -363,7 +363,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-179',
     nombre: 'Juzgado Civil y Comercial N° 6',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -373,7 +373,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-180',
     nombre: 'Juzgado Civil y Comercial N° 7',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -383,7 +383,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-181',
     nombre: 'Juzgado Civil y Comercial N° 8',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -393,7 +393,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-182',
     nombre: 'Juzgado Civil y Comercial N° 9',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -403,7 +403,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-183',
     nombre: 'Juzgado Civil y Comercial N° 10',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -413,7 +413,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-184',
     nombre: 'Juzgado Civil y Comercial N° 11',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -423,7 +423,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-185',
     nombre: 'Juzgado Civil y Comercial N° 12',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -433,7 +433,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-186',
     nombre: 'Juzgado Civil y Comercial N° 13',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -443,7 +443,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-187',
     nombre: 'Juzgado Civil y Comercial N° 14',
-    dependencia: 'Córdoba',
+    dependencia: 'Buenos Aires',
     ciudad: 'Lomas De Zamora',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -2583,7 +2583,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-411',
     nombre: 'Camara de Apelacion en lo Civil y Comercial N° 1 Sala 1 - La Plata',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Cámara',
@@ -2593,7 +2593,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-412',
     nombre: 'Camara de Apelacion en lo Civil y Comercial N° 1 Sala 2 - La Plata',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Cámara',
@@ -2603,7 +2603,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-413',
     nombre: 'Camara de Apelacion en lo Civil y Comercial N° 1 Sala 3 - La Plata',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Cámara',
@@ -2613,7 +2613,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-414',
     nombre: 'Camara de Apelacion en lo Civil y Comercial N° 2 Sala 1 - La Plata',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Cámara',
@@ -2623,7 +2623,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-415',
     nombre: 'Camara de Apelacion en lo Civil y Comercial N° 2 Sala 2 - La Plata',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Cámara',
@@ -2633,7 +2633,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-416',
     nombre: 'Camara de Apelacion en lo Civil y Comercial N° 2 Sala 3 - La Plata',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Cámara',
@@ -2643,7 +2643,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-417',
     nombre: 'Cámara de Apelación en lo Contencioso Administrativo - La Plata, Quilmes, Lomas de Zamora',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Contencioso Administrativo',
     instancia: 'Cámara',
@@ -2653,7 +2653,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-418',
     nombre: 'Camara de Apelacion y Garantias en lo Penal - La Plata',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Penal',
     instancia: 'Cámara',
@@ -2663,7 +2663,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-419',
     nombre: 'Camara de Apelacion y Garantias en lo Penal Sala N° 1',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Penal',
     instancia: 'Cámara',
@@ -2673,7 +2673,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-420',
     nombre: 'Camara de Apelacion y Garantias en lo Penal Sala N° 2',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Penal',
     instancia: 'Cámara',
@@ -2683,7 +2683,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-421',
     nombre: 'Camara de Apelacion y Garantias en lo Penal Sala N° 3',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Penal',
     instancia: 'Cámara',
@@ -2693,7 +2693,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-422',
     nombre: 'Camara de Apelacion y Garantias en lo Penal Sala N° 4',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Penal',
     instancia: 'Cámara',
@@ -2703,7 +2703,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-423',
     nombre: 'Juzgado Civil y Comercial N° 20',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -2713,7 +2713,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-424',
     nombre: 'Juzgado Civil y Comercial N° 21',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -2723,7 +2723,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-425',
     nombre: 'Juzgado Civil y Comercial N° 22',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -2733,7 +2733,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-426',
     nombre: 'Juzgado Civil y Comercial N° 23',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -2743,7 +2743,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-427',
     nombre: 'Juzgado Civil y Comercial N° 24',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -2753,7 +2753,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-428',
     nombre: 'Juzgado Civil y Comercial N° 25',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -2763,7 +2763,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-429',
     nombre: 'Juzgado Civil y Comercial N° 26',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -2773,7 +2773,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-430',
     nombre: 'Juzgado Civil y Comercial N° 27',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Civil y Comercial',
     instancia: 'Primera Instancia',
@@ -2783,7 +2783,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-431',
     nombre: 'Juzgado en lo Contencioso Administrativo N° 1',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Contencioso Administrativo',
     instancia: 'Primera Instancia',
@@ -2793,7 +2793,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-432',
     nombre: 'Juzgado en lo Contencioso Administrativo N° 2',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Contencioso Administrativo',
     instancia: 'Primera Instancia',
@@ -2803,7 +2803,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-433',
     nombre: 'Juzgado en lo Contencioso Administrativo N° 3',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Contencioso Administrativo',
     instancia: 'Primera Instancia',
@@ -2813,7 +2813,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-434',
     nombre: 'Juzgado en lo Contencioso Administrativo N° 4',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Contencioso Administrativo',
     instancia: 'Primera Instancia',
@@ -2823,7 +2823,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-435',
     nombre: 'Juzgado de Familia N° 1',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Familia',
     instancia: 'Primera Instancia',
@@ -2833,7 +2833,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-436',
     nombre: 'Juzgado de Familia N° 2',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Familia',
     instancia: 'Primera Instancia',
@@ -2843,7 +2843,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-437',
     nombre: 'Juzgado de Familia N° 3',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Familia',
     instancia: 'Primera Instancia',
@@ -2853,7 +2853,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-438',
     nombre: 'Juzgado de Familia N° 4',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Familia',
     instancia: 'Primera Instancia',
@@ -2863,7 +2863,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-439',
     nombre: 'Juzgado de Familia N° 5',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Familia',
     instancia: 'Primera Instancia',
@@ -2873,7 +2873,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-440',
     nombre: 'Juzgado de Familia N° 6',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Familia',
     instancia: 'Primera Instancia',
@@ -2883,7 +2883,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-441',
     nombre: 'Juzgado de Familia N° 7',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Familia',
     instancia: 'Primera Instancia',
@@ -2893,7 +2893,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-442',
     nombre: 'Juzgado de Familia N° 8',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Familia',
     instancia: 'Primera Instancia',
@@ -2903,7 +2903,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-443',
     nombre: 'Juzgado de Ejecucion N° 1',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Ejecución',
@@ -2913,7 +2913,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-444',
     nombre: 'Juzgado de Ejecucion N° 2',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Ejecución',
@@ -2923,7 +2923,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-445',
     nombre: 'Juzgado de Garantías N° 1',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -2933,7 +2933,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-446',
     nombre: 'Juzgado de Garantías N° 2',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -2943,7 +2943,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-447',
     nombre: 'Juzgado de Garantías N° 3',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -2953,7 +2953,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-448',
     nombre: 'Juzgado de Garantías N° 4',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -2963,7 +2963,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-449',
     nombre: 'Juzgado de Garantías N° 5',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -2973,7 +2973,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-450',
     nombre: 'Juzgado de Garantías N° 6',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -2983,7 +2983,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-451',
     nombre: 'Juzgado de Garantías N° 1',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -2993,7 +2993,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-452',
     nombre: 'Juzgado de Garantías N° 2',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -3003,7 +3003,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-453',
     nombre: 'Juzgado de Garantías N° 3',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -3013,7 +3013,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-454',
     nombre: 'Juzgado de Garantías N° 4',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -3023,7 +3023,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-455',
     nombre: 'Juzgado de Garantías N° 5',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -3033,7 +3033,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-456',
     nombre: 'Juzgado de Garantías N° 6',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -3043,7 +3043,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-457',
     nombre: 'Juzgado de Garantías N° 7',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'General',
     instancia: 'Juzgado de Garantías',
@@ -3053,7 +3053,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-458',
     nombre: 'Juzgado de Garantias del Joven N° 1',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Menores',
     instancia: 'Juzgado de Garantías',
@@ -3063,7 +3063,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-459',
     nombre: 'Juzgado de Garantias del Joven N° 2',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Menores',
     instancia: 'Juzgado de Garantías',
@@ -3073,7 +3073,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-460',
     nombre: 'Juzgado de Garantias del Joven N° 3',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Menores',
     instancia: 'Juzgado de Garantías',
@@ -3083,7 +3083,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-461',
     nombre: 'Juzgado de Responsabilidad Penal Juvenil N° 1',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Penal, Menores',
     instancia: 'Primera Instancia',
@@ -3093,7 +3093,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-462',
     nombre: 'Juzgado de Responsabilidad Penal Juvenil N° 2',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Penal, Menores',
     instancia: 'Primera Instancia',
@@ -3103,7 +3103,7 @@ export const mockCourthouses: Courthouse[] = [
   {
     id: 'juzgado-463',
     nombre: 'Tribunal en lo Criminal',
-    dependencia: 'Corrientes',
+    dependencia: 'Buenos Aires',
     ciudad: 'La Plata',
     fuero: 'Penal',
     instancia: 'Tribunal',
