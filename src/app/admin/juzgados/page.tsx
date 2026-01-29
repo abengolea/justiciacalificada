@@ -39,6 +39,16 @@ import { Label } from '@/components/ui/label';
 import type { Courthouse } from '@/lib/types';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function AdminCourthousesPage() {
   const [courthouses, setCourthouses] = useState<Courthouse[]>(mockCourthouses);
@@ -49,6 +59,10 @@ export default function AdminCourthousesPage() {
   const [editingCourthouse, setEditingCourthouse] = useState<Courthouse | null>(null);
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   const { toast } = useToast();
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [courthouseIdToDelete, setCourthouseIdToDelete] = useState<string | null>(null);
 
   const form = useForm<Courthouse>();
 
@@ -146,26 +160,31 @@ export default function AdminCourthousesPage() {
     setEditingCourthouse(newCourthouse);
   };
 
-  const handleSingleDelete = (id: string) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este juzgado?')) {
-      setCourthouses((prev) => prev.filter((c) => c.id !== id));
-      toast({
-        title: 'Juzgado eliminado',
-        description: 'El juzgado ha sido eliminado correctamente.',
-      });
-    }
+  const handleDeleteRequest = (id: string) => {
+    setCourthouseIdToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleSingleDelete = () => {
+    if (!courthouseIdToDelete) return;
+    setCourthouses((prev) => prev.filter((c) => c.id !== courthouseIdToDelete));
+    toast({
+      title: 'Juzgado eliminado',
+      description: 'El juzgado ha sido eliminado correctamente.',
+    });
+    setShowDeleteConfirm(false);
+    setCourthouseIdToDelete(null);
   };
 
   const handleBulkDelete = () => {
-     if (window.confirm(`¿Está seguro de que desea eliminar ${selectedRows.length} juzgado(s) seleccionados?`)) {
-        const count = selectedRows.length;
-        setCourthouses((prev) => prev.filter((c) => !selectedRows.includes(c.id)));
-        setSelectedRows([]);
-        toast({
-          title: `${count} juzgado(s) eliminado(s)`,
-          description: 'Los juzgados seleccionados han sido eliminados.',
-        });
-     }
+    const count = selectedRows.length;
+    setCourthouses((prev) => prev.filter((c) => !selectedRows.includes(c.id)));
+    setSelectedRows([]);
+    toast({
+      title: `${count} juzgado(s) eliminado(s)`,
+      description: 'Los juzgados seleccionados han sido eliminados.',
+    });
+    setShowBulkDeleteConfirm(false);
   }
 
   const onSubmitEdit = (data: Courthouse) => {
@@ -240,7 +259,7 @@ export default function AdminCourthousesPage() {
       
       {selectedRows.length > 0 && (
           <div className="mb-4 flex items-center gap-4">
-              <Button variant="destructive" onClick={handleBulkDelete}>
+              <Button variant="destructive" onClick={() => setShowBulkDeleteConfirm(true)}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Eliminar ({selectedRows.length})
               </Button>
@@ -290,13 +309,13 @@ export default function AdminCourthousesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditingCourthouse(courthouse)}>
+                      <DropdownMenuItem onSelect={() => setEditingCourthouse(courthouse)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Editar
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => handleSingleDelete(courthouse.id)}
+                        onSelect={() => handleDeleteRequest(courthouse.id)}
                       >
                          <Trash2 className="mr-2 h-4 w-4" />
                         Eliminar
@@ -367,6 +386,35 @@ export default function AdminCourthousesPage() {
           </Dialog>
       )}
 
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Esto eliminará permanentemente el juzgado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCourthouseIdToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSingleDelete}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Esto eliminará permanentemente los {selectedRows.length} juzgados seleccionados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

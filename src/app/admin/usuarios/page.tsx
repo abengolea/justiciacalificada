@@ -22,10 +22,23 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>(mockUsers);
   const { toast } = useToast();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userIdToDelete, setUserIdToDelete] = useState<string | null>(null);
 
   const handleCreate = () => {
     console.log('Crear nuevo usuario');
@@ -53,14 +66,22 @@ export default function AdminUsersPage() {
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este usuario?')) {
-      setUsers((prev) => prev.filter((u) => u.id !== id));
-      toast({
-        title: 'Usuario eliminado',
-        description: 'El usuario ha sido eliminado correctamente.',
-      });
-    }
+  const handleDeleteRequest = (id: string) => {
+    setUserIdToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDelete = () => {
+    if (!userIdToDelete) return;
+
+    setUsers((prev) => prev.filter((u) => u.id !== userIdToDelete));
+    toast({
+      title: 'Usuario eliminado',
+      description: 'El usuario ha sido eliminado correctamente.',
+    });
+
+    setShowDeleteConfirm(false);
+    setUserIdToDelete(null);
   };
   
   const statusBadgeVariant = {
@@ -119,19 +140,19 @@ export default function AdminUsersPage() {
                     <DropdownMenuContent align="end">
                       {user.status === 'pending' && (
                         <>
-                          <DropdownMenuItem onClick={() => handleUpdateStatus(user.id, 'approved')}>
+                          <DropdownMenuItem onSelect={() => handleUpdateStatus(user.id, 'approved')}>
                             <Check className="mr-2 h-4 w-4" />
                             Aprobar Registro
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                         </>
                       )}
-                      <DropdownMenuItem onClick={() => handleEdit(user.id)}>
+                      <DropdownMenuItem onSelect={() => handleEdit(user.id)}>
                         Editar
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => handleDelete(user.id)}
+                        onSelect={() => handleDeleteRequest(user.id)}
                       >
                          <Trash2 className="mr-2 h-4 w-4" />
                         Eliminar
@@ -144,6 +165,20 @@ export default function AdminUsersPage() {
           </TableBody>
         </Table>
       </div>
+       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Esto eliminará permanentemente al usuario.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setUserIdToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -10,10 +10,23 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
 
 export default function AdminCommentsPage() {
   const [ratings, setRatings] = useState<Rating[]>(mockRatings);
   const { toast } = useToast();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [ratingIdToDelete, setRatingIdToDelete] = useState<string | null>(null);
 
   const handleUpdateStatus = (id: string, status: 'approved' | 'rejected') => {
     setRatings(ratings.map((r) => r.id === id ? { ...r, status } : r));
@@ -23,14 +36,21 @@ export default function AdminCommentsPage() {
     });
   };
   
-  const handleDelete = (id: string) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este comentario permanentemente?')) {
-      setRatings((prev) => prev.filter((r) => r.id !== id));
-      toast({
-        title: 'Comentario eliminado',
-        description: 'El comentario ha sido eliminado permanentemente.',
-      });
-    }
+  const handleDeleteRequest = (id: string) => {
+    setRatingIdToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+  
+  const handleDelete = () => {
+    if (!ratingIdToDelete) return;
+    
+    setRatings((prev) => prev.filter((r) => r.id !== ratingIdToDelete));
+    toast({
+      title: 'Comentario eliminado',
+      description: 'El comentario ha sido eliminado permanentemente.',
+    });
+    setShowDeleteConfirm(false);
+    setRatingIdToDelete(null);
   };
 
   const getCourthouseName = (id: string) => {
@@ -103,7 +123,7 @@ export default function AdminCommentsPage() {
                  <Button 
                     variant="destructive" 
                     size="sm" 
-                    onClick={() => handleDelete(rating.id)}
+                    onClick={() => handleDeleteRequest(rating.id)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Eliminar
@@ -115,6 +135,20 @@ export default function AdminCommentsPage() {
             <p className="text-muted-foreground text-center py-10">No hay comentarios para moderar.</p>
         )}
       </div>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Esto eliminará permanentemente el comentario.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRatingIdToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
