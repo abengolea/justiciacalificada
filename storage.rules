@@ -1,0 +1,15 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Permite a un usuario autenticado escribir en su propia carpeta de credenciales.
+    // Esto es crucial para el flujo de registro donde los usuarios suben su ID.
+    match /credenciales/{uid}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == uid;
+      
+      // Opcional: Permitir que los usuarios lean sus propios archivos si es necesario en el futuro.
+      // Por ahora, el acceso de lectura principal sería para los administradores desde la consola.
+      allow read: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
