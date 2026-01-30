@@ -1,0 +1,146 @@
+/**
+ * Core Philosophy: This ruleset establishes a security model for a lawyer-driven courthouse rating application.
+ * It provides a mix of private user-owned data, publicly readable content, and admin-managed entities.
+ * The primary goals are to ensure lawyers can only manage their own profiles and ratings, protect the integrity
+ * of courthouse data, and restrict sensitive operations to administrators.
+ *
+ * Data Structure:
+ * - /lawyers/{uid}: Private user profiles, where the document ID matches the user's Auth UID. Admins have a 'role: "admin"' field here.
+ * - /courthouses/{courthouseId}: Publicly available information about courthouses.
+ * - /courthouses/{courthouseId}/ratings/{ratingId}: User-submitted ratings, which are publicly readable.
+ * - /courthouses/{courthouseId}/statistics/{statisticId}: Publicly readable, aggregated statistics, not writable by clients.
+ *
+ * Key Security Decisions:
+ * - Strict Ownership: A lawyer's profile in `/lawyers` is strictly private and can only be accessed or modified by the owner, unless the user is an admin.
+ * - Public Read, Admin Write: Core data like `/courthouses` is readable by anyone but can only be modified by users designated as admins.
+ * - Denormalized Ownership for Subcollections: Each `rating` document contains a `lawyerId` field. This denormalization is critical for security, allowing write-access checks directly on the document.
+ * - Read-Only Data: Aggregated data like `/statistics` is completely locked down from client writes to ensure data integrity.
+ *
+ * Denormalization for Authorization:
+ * To create simpler, more performant rules, we denormalize the `lawyerId` onto each `rating` document. This allows a fast, simple rule like `isOwner(resource.data.lawyerId)` without any extra `get()` calls to check who created the rating.
+ *
+ * Structural Segregation:
+ * The data is naturally segregated into top-level collections based on access patterns (e.g., private `lawyers` vs. public `courthouses`), which is a secure and performant design.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------------
+    // Helper Functions
+    // ----------------------------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/lawyers/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isValidNewLawyer(uid) {
+      let data = request.resource.data;
+      
+      // A regular lawyer registration
+      let isNormalRegistration = (
+        data.status == 'pending' &&
+        data.role == 'user' &&
+        data.registrationDate == request.time
+      );
+
+      // The special one-time admin bootstrap
+      let isAdminBootstrap = (
+        data.status == 'approved' &&
+        data.role == 'admin' &&
+        data.email == 'abengolea1@gmail.com'
+      );
+
+      return data.uid == uid &&
+             data.nombre is string && data.nombre.size() > 0 &&
+             data.apellido is string && data.apellido.size() > 0 &&
+             data.email is string && data.email.matches('.+@.+\\..+') &&
+             data.matricula is string &&
+             data.fechaMatriculacion is string &&
+             data.credencialUrl is string &&
+             (isNormalRegistration || isAdminBootstrap);
+    }
+
+    function isValidLawyerUpdate(uid) {
+        let data = request.resource.data;
+        let existingData = resource.data;
+        
+        let coreFieldsUnchanged = data.uid == existingData.uid &&
+                                  data.email == existingData.email &&
+                                  data.registrationDate == existingData.registrationDate;
+
+        // A regular user can update their own profile, but cannot change their role or status.
+        let ownerCanUpdate = isOwner(uid) &&
+                             !isAdmin() && // An admin updating their own profile falls under adminCanUpdate
+                             coreFieldsUnchanged &&
+                             data.role == existingData.role &&
+                             data.status == existingData.status;
+
+        // An admin can update any user's profile, except for the core immutable fields.
+        let adminCanUpdate = isAdmin() && coreFieldsUnchanged;
+
+        return ownerCanUpdate || adminCanUpdate;
+    }
+
+
+    function isValidNewRating(courthouseId) {
+      let data = request.resource.data;
+      return isSignedIn() &&
+             data.lawyerId == request.auth.uid &&
+             data.courthouseId == courthouseId;
+    }
+
+    function areRatingFieldsImmutable() {
+      return request.resource.data.lawyerId == resource.data.lawyerId &&
+             request.resource.data.courthouseId == resource.data.courthouseId;
+    }
+
+
+    // ----------------------------------------------------------------
+    // Rules
+    // ----------------------------------------------------------------
+
+    match /lawyers/{uid} {
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(uid) && isValidNewLawyer(uid);
+      allow update: if isExistingDoc() && isValidLawyerUpdate(uid);
+      allow delete: if isAdmin() && isExistingDoc();
+    }
+
+    match /courthouses/{courthouseId} {
+      allow get, list: if true;
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() && isExistingDoc();
+
+      match /ratings/{ratingId} {
+        allow get, list: if true;
+        allow create: if isValidNewRating(courthouseId);
+        allow update: if isOwner(resource.data.lawyerId) && isExistingDoc() && areRatingFieldsImmutable();
+        allow delete: if isOwner(resource.data.lawyerId) && isExistingDoc();
+      }
+
+      match /statistics/{statisticId} {
+        allow get, list: if true;
+        allow create, update, delete: if false;
+      }
+    }
+
+    match /mail/{mailId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if false;
+    }
+  }
+}
