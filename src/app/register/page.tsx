@@ -202,8 +202,10 @@ export default function RegisterPage() {
         });
       }
 
+      console.error("Error de Registro:", error);
+
       let title = 'Error en el Registro';
-      let description = 'Ocurrió un error. Por favor, intente de nuevo.';
+      let description = error.message || 'Ocurrió un error. Por favor, intente de nuevo.';
 
       if (error.code === 'auth/email-already-in-use') {
         title = 'Email ya registrado';
@@ -312,9 +314,11 @@ export default function RegisterPage() {
             console.error("Failed to sign out user after Google registration error:", signOutError);
         });
 
+        console.error("Error de registro con Google:", error);
+
         toast({
             title: "Error de registro con Google",
-            description: "No se pudo completar el registro. Inténtalo de nuevo.",
+            description: error.message || "No se pudo completar el registro. Inténtalo de nuevo.",
             variant: "destructive",
         });
     } finally {
