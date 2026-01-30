@@ -182,7 +182,7 @@ export default function RegisterPage() {
           'Su solicitud ha sido enviada. Recibirá un email cuando su cuenta sea aprobada.',
         variant: 'default',
       });
-      router.push('/');
+      form.reset();
     } catch (error: any) {
       let title = 'Error en el Registro';
       let description = 'Ocurrió un error. Por favor, intente de nuevo.';
@@ -220,7 +220,6 @@ export default function RegisterPage() {
         });
         router.push('/');
     } catch (error: any) {
-        console.error("Google Sign-In Error", error);
         toast({
             title: "Error de inicio de sesión con Google",
             description: "No se pudo iniciar sesión con Google. Inténtalo de nuevo.",
