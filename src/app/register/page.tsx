@@ -37,6 +37,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import {
   useFirebase,
+  addDocumentNonBlocking,
 } from '@/firebase';
 import {
   User,
@@ -45,7 +46,7 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
-import { doc, serverTimestamp, collection, getDoc, setDoc, addDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, collection, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { es } from 'date-fns/locale';
 
@@ -80,17 +81,6 @@ const baseFormSchema = z.object({
     .max(fiveYearsAgo, {
       message: 'Debe tener al menos 5 años de matriculación.',
     }),
-  // credencial: z
-  //   .any()
-  //   .refine((files) => files?.length == 1, 'La foto de la credencial es requerida.')
-  //   .refine(
-  //     (files) => files?.[0]?.size <= 2 * 1024 * 1024,
-  //     `El tamaño máximo del archivo es 2MB.`
-  //   )
-  //   .refine(
-  //       (files) => ["image/jpeg", "image/png", "image/webp"].includes(files?.[0]?.type),
-  //       "Solo se aceptan formatos .jpg, .png y .webp."
-  //   ),
 });
 
 export default function RegisterPage() {
@@ -110,8 +100,6 @@ export default function RegisterPage() {
       password: '',
     },
   });
-
-  // const fileRef = form.register('credencial');
 
   async function onSubmit(values: z.infer<typeof baseFormSchema>) {
     setIsLoading(true);
@@ -133,12 +121,7 @@ export default function RegisterPage() {
       user = userCredential.user;
       console.log("Paso 1 completado. UID:", user.uid);
 
-      // Paso 2 deshabilitado temporalmente
       console.log("Paso 2: Subiendo credencial (deshabilitado temporalmente)");
-      // const file = values.credencial[0];
-      // const storageRef = ref(storage, `credenciales/${user.uid}/${file.name}`);
-      // await uploadBytes(storageRef, file);
-      // const credencialUrl = await getDownloadURL(storageRef);
       const credencialUrl = ""; // Valor temporal
       console.log("Paso 2 completado.");
 
@@ -178,7 +161,7 @@ export default function RegisterPage() {
             `,
         },
       };
-      await addDoc(mailCollectionRef, adminMailData);
+      addDocumentNonBlocking(mailCollectionRef, adminMailData);
       
       const userMailData = {
         to: [values.email],
@@ -192,7 +175,7 @@ export default function RegisterPage() {
           `
         }
       }
-      await addDoc(mailCollectionRef, userMailData);
+      addDocumentNonBlocking(mailCollectionRef, userMailData);
       console.log("Paso 4 completado.");
       
       toast({
@@ -277,10 +260,6 @@ export default function RegisterPage() {
             return;
         }
         
-        // const file = values.credencial[0];
-        // const storageRef = ref(storage, `credenciales/${user.uid}/${file.name}`);
-        // await uploadBytes(storageRef, file);
-        // const credencialUrl = await getDownloadURL(storageRef);
         const credencialUrl = ""; // Valor temporal
 
         const lawyerData = {
@@ -305,13 +284,13 @@ export default function RegisterPage() {
             to: ['justiciacalificada@gmail.com'],
             message: { subject: `Nuevo Registro (Google) Pendiente: ${values.nombre} ${values.apellido}`, html: `<p>Un nuevo abogado se ha registrado con Google y está esperando aprobación.</p><ul><li><strong>Nombre:</strong> ${values.nombre} ${values.apellido}</li><li><strong>Email:</strong> ${user.email}</li><li><strong>Matrícula:</strong> ${values.matricula}</li></ul><p>Por favor, ingrese al <a href="https://qualified-justice.web.app/admin/usuarios">panel de administración</a> para revisar la solicitud.</p>` },
         };
-        await addDoc(mailCollectionRef, adminMailData);
+        addDocumentNonBlocking(mailCollectionRef, adminMailData);
         
         const userMailData = {
             to: [user.email!],
             message: { subject: 'Hemos recibido su solicitud de registro', html: `<p>Hola ${values.nombre},</p><p>Gracias por registrarse en Justicia Calificada. Su solicitud ha sido recibida y está siendo revisada por nuestros administradores.</p><p>Recibirá otro correo electrónico una vez que su cuenta haya sido aprobada.</p><p>Atentamente,<br>El equipo de Justicia Calificada</p>` }
         };
-        await addDoc(mailCollectionRef, userMailData);
+        addDocumentNonBlocking(mailCollectionRef, userMailData);
         
         toast({
             title: 'Registro Enviado',
@@ -348,8 +327,7 @@ export default function RegisterPage() {
           </CardTitle>
           <CardDescription>
             Complete el formulario para crear su cuenta. Se requerirá la
-            verificación de su matrícula profesional (mínimo 5 años) y
-            credencial.
+            verificación de su matrícula profesional (mínimo 5 años).
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -444,20 +422,6 @@ export default function RegisterPage() {
                   </FormItem>
                 )}
               />
-{/* 
-              <FormField
-                control={form.control}
-                name="credencial"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Foto de la Credencial</FormLabel>
-                     <FormControl>
-                        <Input type="file" {...fileRef} disabled={isLoading || isGoogleLoading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              /> */}
 
               <FormField
                 control={form.control}
