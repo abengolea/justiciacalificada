@@ -1,19 +1,28 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Mail, MapPin } from "lucide-react";
-import { useFirebase, addDocumentNonBlocking } from "@/firebase";
+import { useFirebase, useUser, addDocumentNonBlocking } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ContactoPage() {
   const { firestore } = useFirebase();
+  const { user } = useUser();
   const { toast } = useToast();
 
   const handleSendTestEmail = () => {
     if (!firestore) return;
+
+    if (!user) {
+      toast({
+        title: 'Inicio de sesión requerido',
+        description: 'Debe iniciar sesión para poder enviar un correo de prueba.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     const mailCollectionRef = collection(firestore, "mail");
     const testEmail = {
@@ -86,7 +95,7 @@ export default function ContactoPage() {
           <div className="pt-6 border-t">
             <h3 className="text-lg font-semibold mb-2">Prueba de Envío</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Haga clic aquí para enviar un correo electrónico de prueba y verificar la configuración.
+              Inicie sesión y haga clic aquí para enviar un correo electrónico de prueba y verificar la configuración.
             </p>
             <Button onClick={handleSendTestEmail} variant="secondary">
               Enviar Correo de Prueba
