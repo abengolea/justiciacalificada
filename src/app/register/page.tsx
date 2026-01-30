@@ -93,12 +93,6 @@ const baseFormSchema = z.object({
     ),
 });
 
-const emailPasswordFormSchema = baseFormSchema.refine(data => !!data.password && data.password.length >= 6, {
-    message: "La contraseña debe tener al menos 6 caracteres.",
-    path: ["password"],
-});
-
-
 export default function RegisterPage() {
   const { toast } = useToast();
   const router = useRouter();
@@ -120,15 +114,16 @@ export default function RegisterPage() {
   const fileRef = form.register('credencial');
 
   async function onSubmit(values: z.infer<typeof baseFormSchema>) {
+    setIsLoading(true);
     if (!values.password || values.password.length < 6) {
       form.setError("password", {
         type: "manual",
         message: "La contraseña debe tener al menos 6 caracteres.",
       });
+      setIsLoading(false);
       return;
     }
     
-    setIsLoading(true);
     let user: User | null = null;
     try {
       // 1. Create user in Firebase Auth
@@ -228,6 +223,7 @@ export default function RegisterPage() {
   }
   
   async function handleGoogleSignIn() {
+    setGoogleLoading(true);
     const isValid = await form.trigger(['nombre', 'apellido', 'matricula', 'fechaMatriculacion', 'credencial', 'email']);
     if (!isValid) {
         toast({
@@ -235,12 +231,12 @@ export default function RegisterPage() {
             description: "Por favor, complete todos los campos requeridos (excepto la contraseña) antes de registrarse con Google.",
             variant: "destructive",
         });
+        setGoogleLoading(false);
         return;
     }
     
     const values = form.getValues();
 
-    setGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {
         const result = await signInWithPopup(auth, provider);
@@ -255,7 +251,6 @@ export default function RegisterPage() {
                 description: 'Esta cuenta de Google ya se encuentra registrada. Por favor, intente iniciar sesión.',
                 variant: 'destructive',
             });
-            setGoogleLoading(false);
             return;
         }
         
@@ -266,7 +261,6 @@ export default function RegisterPage() {
                 description: 'El correo del formulario no coincide con su cuenta de Google. Por favor, use el mismo correo.',
                 variant: 'destructive',
             });
-            setGoogleLoading(false);
             return;
         }
 
