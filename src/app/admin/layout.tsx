@@ -1,11 +1,15 @@
-import { ReactNode } from 'react';
+'use client';
+
+import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Home,
   Gavel,
   Users,
   MessageSquare,
   PanelLeft,
+  Loader2,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -21,16 +25,66 @@ import {
 } from '@/components/ui/sidebar';
 import { AppLogo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
+import { useUser, useFirebase } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
-// Mock user check. Replace with real auth logic.
-const user = { role: 'admin' }; 
-
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  if (user.role !== 'admin') {
+  const { user, isUserLoading } = useUser();
+  const { firestore } = useFirebase();
+  const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+
+  useEffect(() => {
+    if (isUserLoading) {
+      return; // Wait for Firebase Auth to initialize.
+    }
+
+    if (!user) {
+      router.replace('/login'); // If not loading and no user, redirect.
+      return;
+    }
+
+    const checkAdminStatus = async () => {
+      setIsCheckingAdmin(true);
+      const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
+      const lawyerProfileRef = doc(firestore, 'lawyers', user.uid);
+
+      try {
+        const [adminRoleDoc, lawyerProfileDoc] = await Promise.all([
+          getDoc(adminRoleRef),
+          getDoc(lawyerProfileRef),
+        ]);
+
+        if (adminRoleDoc.exists() || (lawyerProfileDoc.exists() && lawyerProfileDoc.data().role === 'admin')) {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      } catch (error) {
+        console.error("Error checking admin status:", error);
+        setIsAdmin(false);
+      } finally {
+        setIsCheckingAdmin(false);
+      }
+    };
+
+    checkAdminStatus();
+  }, [user, isUserLoading, router, firestore]);
+
+  if (isUserLoading || isCheckingAdmin) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
