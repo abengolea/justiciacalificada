@@ -1,7 +1,37 @@
+
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Mail, MapPin } from "lucide-react";
+import { useFirebase, addDocumentNonBlocking } from "@/firebase";
+import { collection } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ContactoPage() {
+  const { firestore } = useFirebase();
+  const { toast } = useToast();
+
+  const handleSendTestEmail = () => {
+    if (!firestore) return;
+
+    const mailCollectionRef = collection(firestore, "mail");
+    const testEmail = {
+      to: ['abengolea1@gmail.com'],
+      message: {
+        subject: 'Correo de Prueba - Justicia Calificada',
+        html: 'Este es un correo de prueba para verificar que la configuración de envío de correos funciona correctamente. ¡Felicitaciones!',
+      },
+    };
+
+    addDocumentNonBlocking(mailCollectionRef, testEmail);
+
+    toast({
+      title: 'Correo de prueba enviado',
+      description: 'La solicitud para enviar el correo a abengolea1@gmail.com ha sido creada.',
+    });
+  };
+
   return (
     <div className="container mx-auto max-w-3xl py-12 px-4 md:px-6">
       <Card>
@@ -52,6 +82,16 @@ export default function ContactoPage() {
             moderación o problemas técnicos, por favor utilice el correo
             electrónico proporcionado.
           </p>
+
+          <div className="pt-6 border-t">
+            <h3 className="text-lg font-semibold mb-2">Prueba de Envío</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Haga clic aquí para enviar un correo electrónico de prueba y verificar la configuración.
+            </p>
+            <Button onClick={handleSendTestEmail} variant="secondary">
+              Enviar Correo de Prueba
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
