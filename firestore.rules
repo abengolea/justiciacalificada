@@ -194,5 +194,17 @@ service cloud.firestore {
       allow update: if isAdmin() && isExistingDoc();
       allow delete: if isAdmin() && isExistingDoc();
     }
+
+    /**
+     * @description Manages email sending triggers.
+     * @path /mail/{mailId}
+     * @allow (create) Any authenticated user can trigger an email by creating a document.
+     * @deny (read, update, delete) Clients cannot read, modify, or delete email documents.
+     * @principle Allows the "Trigger Email" extension to work by letting clients create documents, while keeping the collection secure.
+     */
+    match /mail/{mailId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if false;
+    }
   }
 }
