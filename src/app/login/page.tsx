@@ -25,9 +25,10 @@ import {
 } from '@/components/ui/form';
 import { Input } from "@/components/ui/input";
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { useFirebase } from '@/firebase';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
 
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -47,7 +48,7 @@ const formSchema = z.object({
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const auth = useAuth();
+  const { auth, firestore } = useFirebase();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -61,7 +62,26 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      const lawyerDocRef = doc(firestore, "lawyers", user.uid);
+      const lawyerDoc = await getDoc(lawyerDocRef);
+
+      if (!lawyerDoc.exists() || lawyerDoc.data().status !== 'approved') {
+        await signOut(auth);
+        const description = !lawyerDoc.exists()
+          ? 'Este usuario no está registrado como abogado o su registro fue rechazado.'
+          : 'Su cuenta aún está pendiente de aprobación por un administrador.';
+        toast({
+          title: 'Acceso Denegado',
+          description,
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
       toast({
         title: 'Inicio de sesión exitoso',
         description: 'Bienvenido de nuevo.',
@@ -83,7 +103,35 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      const lawyerDocRef = doc(firestore, "lawyers", user.uid);
+      const lawyerDoc = await getDoc(lawyerDocRef);
+
+      if (!lawyerDoc.exists()) {
+        await signOut(auth);
+        toast({
+            title: "Usuario no registrado",
+            description: "Por favor, complete el formulario de registro para crear una cuenta.",
+            variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      const lawyerData = lawyerDoc.data();
+      if (lawyerData.status !== 'approved') {
+         await signOut(auth);
+         toast({
+          title: 'Cuenta Pendiente',
+          description: 'Su cuenta aún está pendiente de aprobación por un administrador.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
       toast({
         title: 'Inicio de sesión con Google exitoso',
       });
