@@ -313,7 +313,7 @@ export default function RegisterPage() {
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={(date) =>
-                            date > new Date() || date < new Date('1950-01-01')
+                            date > fiveYearsAgo || date < new Date('1950-01-01')
                           }
                           initialFocus
                         />
