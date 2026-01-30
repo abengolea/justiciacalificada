@@ -28,7 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -96,10 +96,51 @@ export default function LoginPage() {
         return;
 
     } else {
+        // NEW: Check for the admin email if no profile exists
+        if (user.email === 'abengolea1@gmail.com') {
+          try {
+            toast({
+              title: 'Configurando cuenta de administrador',
+              description: 'Por favor, espere un momento...',
+            });
+
+            const adminData = {
+              uid: user.uid,
+              nombre: 'Admin',
+              apellido: 'Principal',
+              email: 'abengolea1@gmail.com',
+              matricula: 'N/A',
+              fechaMatriculacion: new Date('2000-01-01T00:00:00Z').toISOString(),
+              credencialUrl: 'N/A',
+              role: 'admin',
+              status: 'approved',
+              registrationDate: serverTimestamp(),
+            };
+
+            await setDoc(lawyerProfileRef, adminData);
+
+            toast({
+              title: 'Cuenta de Administrador Creada',
+              description: 'Redirigiendo al panel de administración.',
+            });
+            router.push('/admin');
+            return;
+          } catch (setupError) {
+            console.error('Error creating admin profile:', setupError);
+            await signOut(auth);
+            toast({
+              title: 'Error de configuración',
+              description: 'No se pudo crear el perfil de administrador.',
+              variant: 'destructive',
+            });
+            return;
+          }
+        }
+      
         await signOut(auth);
         toast({
             title: 'Acceso Denegado',
-            description: 'No existe un perfil de abogado para esta cuenta. Por favor, regístrese o contacte al administrador.',
+            description: 'No existe un perfil de abogado para esta cuenta. Por favor, regístrese.',
             variant: 'destructive',
         });
         return;
