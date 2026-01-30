@@ -184,7 +184,6 @@ export default function RegisterPage() {
       });
       router.push('/');
     } catch (error: any) {
-      console.error("Registration error:", error);
       let title = 'Error en el Registro';
       let description = 'Ocurrió un error. Por favor, intente de nuevo.';
 
