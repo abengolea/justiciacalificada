@@ -37,8 +37,6 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import {
   useFirebase,
-  setDocumentNonBlocking,
-  addDocumentNonBlocking,
 } from '@/firebase';
 import {
   User,
@@ -47,7 +45,7 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
-import { doc, serverTimestamp, collection, getDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, collection, getDoc, setDoc, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { es } from 'date-fns/locale';
 
@@ -123,7 +121,7 @@ export default function RegisterPage() {
 
   async function onSubmit(values: z.infer<typeof emailPasswordFormSchema>) {
     setIsLoading(true);
-    let user: User | null = null; // To hold the created user
+    let user: User | null = null;
     try {
       // 1. Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
@@ -150,7 +148,7 @@ export default function RegisterPage() {
       };
 
       const lawyerDocRef = doc(firestore, "lawyers", user.uid);
-      setDocumentNonBlocking(lawyerDocRef, lawyerData, {});
+      await setDoc(lawyerDocRef, lawyerData);
       
       const mailCollectionRef = collection(firestore, "mail");
       
@@ -170,7 +168,7 @@ export default function RegisterPage() {
             `,
         },
       };
-      addDocumentNonBlocking(mailCollectionRef, adminMailData);
+      await addDoc(mailCollectionRef, adminMailData);
       
       // 5. Send "pending" email to user
       const userMailData = {
@@ -185,7 +183,7 @@ export default function RegisterPage() {
           `
         }
       }
-      addDocumentNonBlocking(mailCollectionRef, userMailData);
+      await addDoc(mailCollectionRef, userMailData);
       
       toast({
         title: 'Registro Enviado',
@@ -195,7 +193,6 @@ export default function RegisterPage() {
       });
       form.reset();
     } catch (error: any) {
-      // If user was created, but a subsequent step failed, we should delete them to allow a retry.
       if (user) {
         await user.delete().catch(deleteError => {
           console.error("Failed to clean up partially created user:", deleteError);
@@ -223,7 +220,6 @@ export default function RegisterPage() {
   }
   
   async function handleGoogleSignIn() {
-    // 1. Validate form fields except for password
     const isValid = await form.trigger(['nombre', 'apellido', 'matricula', 'fechaMatriculacion', 'credencial', 'email']);
     if (!isValid) {
         toast({
@@ -242,11 +238,10 @@ export default function RegisterPage() {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
 
-        // Check if a lawyer with this UID already exists
         const lawyerDocRefCheck = doc(firestore, "lawyers", user.uid);
         const docSnap = await getDoc(lawyerDocRefCheck);
         if (docSnap.exists()) {
-             await signOut(auth); // Log them out
+             await signOut(auth);
              toast({
                 title: 'Email ya registrado',
                 description: 'Esta cuenta de Google ya se encuentra registrada. Por favor, intente iniciar sesión.',
@@ -257,7 +252,7 @@ export default function RegisterPage() {
         }
         
         if (user.email !== values.email) {
-            await signOut(auth); // Log them out
+            await signOut(auth);
             toast({
                 title: 'Correo no coincide',
                 description: 'El correo del formulario no coincide con su cuenta de Google. Por favor, use el mismo correo.',
@@ -286,7 +281,7 @@ export default function RegisterPage() {
         };
 
         const lawyerDocRef = doc(firestore, "lawyers", user.uid);
-        setDocumentNonBlocking(lawyerDocRef, lawyerData, {});
+        await setDoc(lawyerDocRef, lawyerData);
         
         const mailCollectionRef = collection(firestore, "mail");
         
@@ -294,13 +289,13 @@ export default function RegisterPage() {
             to: ['justiciacalificada@gmail.com'],
             message: { subject: `Nuevo Registro (Google) Pendiente: ${values.nombre} ${values.apellido}`, html: `<p>Un nuevo abogado se ha registrado con Google y está esperando aprobación.</p><ul><li><strong>Nombre:</strong> ${values.nombre} ${values.apellido}</li><li><strong>Email:</strong> ${user.email}</li><li><strong>Matrícula:</strong> ${values.matricula}</li></ul><p>Por favor, ingrese al <a href="https://qualified-justice.web.app/admin/usuarios">panel de administración</a> para revisar la solicitud.</p>` },
         };
-        addDocumentNonBlocking(mailCollectionRef, adminMailData);
+        await addDoc(mailCollectionRef, adminMailData);
         
         const userMailData = {
             to: [user.email!],
             message: { subject: 'Hemos recibido su solicitud de registro', html: `<p>Hola ${values.nombre},</p><p>Gracias por registrarse en Justicia Calificada. Su solicitud ha sido recibida y está siendo revisada por nuestros administradores.</p><p>Recibirá otro correo electrónico una vez que su cuenta haya sido aprobada.</p><p>Atentamente,<br>El equipo de Justicia Calificada</p>` }
         };
-        addDocumentNonBlocking(mailCollectionRef, userMailData);
+        await addDoc(mailCollectionRef, userMailData);
         
         toast({
             title: 'Registro Enviado',
@@ -309,7 +304,6 @@ export default function RegisterPage() {
         });
         form.reset();
     } catch (error: any) {
-        // If an error occurred during profile creation, sign the user out to avoid an inconsistent state
         await signOut(auth).catch(signOutError => {
             console.error("Failed to sign out user after Google registration error:", signOutError);
         });
