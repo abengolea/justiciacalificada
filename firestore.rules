@@ -5,17 +5,16 @@
  * of courthouse data, and restrict sensitive operations to administrators.
  *
  * Data Structure:
- * - /lawyers/{uid}: Private user profiles, where the document ID matches the user's Auth UID.
+ * - /lawyers/{uid}: Private user profiles, where the document ID matches the user's Auth UID. Admins have a 'role: "admin"' field here.
  * - /courthouses/{courthouseId}: Publicly available information about courthouses.
  * - /courthouses/{courthouseId}/ratings/{ratingId}: User-submitted ratings, which are publicly readable.
  * - /courthouses/{courthouseId}/statistics/{statisticId}: Publicly readable, aggregated statistics, not writable by clients.
- * - /roles_admin/{uid}: A collection where the existence of a document grants a user admin privileges.
  *
  * Key Security Decisions:
- * - Strict Ownership: A lawyer's profile in `/lawyers` is strictly private and can only be accessed or modified by the owner. Listing lawyers is disabled to prevent user enumeration.
- * - Public Read, Admin Write: Core data like `/courthouses` is readable by anyone but can only be modified by users designated as admins via the `/roles_admin` collection.
- * - Denormalized Ownership for Subcollections: Each `rating` document contains a `lawyerId` field. This denormalization is critical for security, allowing write-access checks directly on the document without needing expensive or impossible lookups to other collections.
- * - Read-Only Data: Aggregated data like `/statistics` is completely locked down from client writes to ensure data integrity. These documents are expected to be updated by trusted server-side processes.
+ * - Strict Ownership: A lawyer's profile in `/lawyers` is strictly private and can only be accessed or modified by the owner, unless the user is an admin.
+ * - Public Read, Admin Write: Core data like `/courthouses` is readable by anyone but can only be modified by users designated as admins.
+ * - Denormalized Ownership for Subcollections: Each `rating` document contains a `lawyerId` field. This denormalization is critical for security, allowing write-access checks directly on the document.
+ * - Read-Only Data: Aggregated data like `/statistics` is completely locked down from client writes to ensure data integrity.
  *
  * Denormalization for Authorization:
  * To create simpler, more performant rules, we denormalize the `lawyerId` onto each `rating` document. This allows a fast, simple rule like `isOwner(resource.data.lawyerId)` without any extra `get()` calls to check who created the rating.
@@ -44,12 +43,12 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      return isSignedIn() && get(/databases/$(database)/documents/lawyers/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isValidNewLawyer(uid) {
       let data = request.resource.data;
-      return data.uid == uid &&
+      return (data.uid == uid &&
              data.status == 'pending' &&
              data.role == 'user' &&
              data.nombre is string && data.nombre.size() > 0 &&
@@ -58,7 +57,7 @@ service cloud.firestore {
              data.matricula is string && data.matricula.size() > 0 &&
              data.fechaMatriculacion is string &&
              data.credencialUrl is string &&
-             data.registrationDate == request.time;
+             data.registrationDate == request.time) || (isAdmin() && data.uid == uid); // Admins can create profiles, including their own
     }
 
     function isValidLawyerUpdate(uid) {
@@ -124,13 +123,6 @@ service cloud.firestore {
         allow get, list: if true;
         allow create, update, delete: if false;
       }
-    }
-
-    match /roles_admin/{uid} {
-      allow get: if isOwner(uid) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin() && isExistingDoc();
     }
 
     match /mail/{mailId} {

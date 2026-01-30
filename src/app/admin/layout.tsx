@@ -52,10 +52,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const checkAdminStatus = async () => {
       setIsCheckingAdmin(true);
       try {
-        const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
-        const adminRoleDoc = await getDoc(adminRoleRef);
+        const lawyerRef = doc(firestore, 'lawyers', user.uid);
+        const lawyerDoc = await getDoc(lawyerRef);
         
-        if (adminRoleDoc.exists()) {
+        if (lawyerDoc.exists() && lawyerDoc.data().role === 'admin') {
           setIsAdmin(true);
         } else {
           setIsAdmin(false);

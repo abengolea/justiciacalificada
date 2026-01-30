@@ -312,24 +312,8 @@
             }
           ]
         }
-      },
-      {
-        "path": "/roles_admin/{uid}",
-        "definition": {
-          "entityName": "role",
-          "schema": {
-            "$ref": "#/backend/entities/Lawyer"
-          },
-          "description": "Documents in this collection grant admin privileges to the user with the matching UID. Existence over content.",
-          "params": [
-            {
-              "name": "uid",
-              "description": "The Firebase Auth UID of the user."
-            }
-          ]
-        }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the core features of the \"Justicia Calificada\" application, emphasizing secure authentication, courthouse ratings, and statistical analysis. The structure prioritizes authorization independence, clear security rules, and efficient data retrieval. Path-based ownership is used for lawyers, and a combination of path-based ownership and denormalization is employed to manage access to ratings and statistics.\n\n**Authorization Independence:** Lawyer profiles are stored directly under `/lawyers/{uid}` which allows easy management of lawyer-specific data and authentication. The `Rating` documents under `/courthouses/{courthouseId}/ratings/{ratingId}` include the `lawyerId`, enabling security rules to verify that the authenticated user (`request.auth.uid`) matches the rating's `lawyerId`. This avoids the need for `get()` calls to the `/lawyers/{uid}` collection to check ownership.\n\n**QAPs Support:** The structure supports Query Approval Patterns (QAPs) by segregating data based on access requirements. Lawyers' data are stored in `/lawyers/{uid}`, which allows listing lawyers with appropriate filtering rules. Courthouse data in `/courthouses/{courthouseId}` allows public listing while statistics are managed separately in `/courthouses/{courthouseId}/statistics/{statisticId}`, enabling different security rules for each. Ratings are located in a subcollection, ensuring we can query ratings for a specific courthouse, and because each rating contains the lawyerId, we can filter/secure lists of ratings based on the authenticated lawyer.\n\n**Denormalization:** The `Rating` documents include the `lawyerId`. This is a form of denormalization to enable security rules to ensure that only the lawyer who created the rating can modify or delete it. This eliminates the need for server-side validation to verify the user's identity against the rating data.\n\n**Global Roles (DBAC):** Global admin roles are stored in `/roles_admin/{uid}`. The existence of a document in this collection grants administrative privileges.\n"
+    "reasoning": "The Firestore structure is designed to support the core features of the \"Justicia Calificada\" application, emphasizing secure authentication, courthouse ratings, and statistical analysis. The structure prioritizes authorization independence, clear security rules, and efficient data retrieval. Path-based ownership is used for lawyers, and a combination of path-based ownership and denormalization is employed to manage access to ratings and statistics.\n\n**Authorization Independence:** Lawyer profiles are stored directly under `/lawyers/{uid}` which allows easy management of lawyer-specific data and authentication. The `Rating` documents under `/courthouses/{courthouseId}/ratings/{ratingId}` include the `lawyerId`, enabling security rules to verify that the authenticated user (`request.auth.uid`) matches the rating's `lawyerId`. This avoids the need for `get()` calls to the `/lawyers/{uid}` collection to check ownership.\n\n**QAPs Support:** The structure supports Query Approval Patterns (QAPs) by segregating data based on access requirements. Lawyers' data are stored in `/lawyers/{uid}`, which allows listing lawyers with appropriate filtering rules. Courthouse data in `/courthouses/{courthouseId}` allows public listing while statistics are managed separately in `/courthouses/{courthouseId}/statistics/{statisticId}`, enabling different security rules for each. Ratings are located in a subcollection, ensuring we can query ratings for a specific courthouse, and because each rating contains the lawyerId, we can filter/secure lists of ratings based on the authenticated lawyer.\n\n**Denormalization:** The `Rating` documents include the `lawyerId`. This is a form of denormalization to enable security rules to ensure that only the lawyer who created the rating can modify or delete it. This eliminates the need for server-side validation to verify the user's identity against the rating data.\n\n**Global Roles (DBAC):** Global admin roles are defined by a `role` field within the `/lawyers/{uid}` document. This simplifies the data model and removes the need for a separate collection for roles.\n"
   }
 }

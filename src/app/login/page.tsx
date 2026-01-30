@@ -60,27 +60,12 @@ export default function LoginPage() {
   });
 
   const handleSuccessfulLogin = async (user: User) => {
-    const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
-    const adminRoleDoc = await getDoc(adminRoleRef);
-    
-    // Explicitly check for the super-admin role first.
-    if (adminRoleDoc.exists()) {
-        toast({
-            title: 'Inicio de sesión de Administrador',
-            description: 'Bienvenido, administrador.',
-        });
-        router.push('/admin');
-        return; // Exit early if super-admin
-    }
-
-    // If not a super-admin, then check the lawyer profile.
     const lawyerProfileRef = doc(firestore, 'lawyers', user.uid);
     const lawyerProfileDoc = await getDoc(lawyerProfileRef);
 
     if (lawyerProfileDoc.exists()) {
         const lawyerData = lawyerProfileDoc.data();
         
-        // Check if the lawyer is an admin
         if (lawyerData.role === 'admin') {
             toast({
                 title: 'Inicio de sesión de Administrador',
@@ -90,7 +75,6 @@ export default function LoginPage() {
             return;
         }
 
-        // Check if the lawyer is approved
         if (lawyerData.status === 'approved') {
             toast({
                 title: 'Inicio de sesión exitoso',
@@ -100,7 +84,6 @@ export default function LoginPage() {
             return;
         }
 
-        // If lawyer is pending or rejected
         await signOut(auth);
         const description = lawyerData.status === 'pending'
             ? 'Su cuenta aún está pendiente de aprobación por un administrador.'
@@ -113,11 +96,10 @@ export default function LoginPage() {
         return;
 
     } else {
-        // No lawyer profile exists, and user is not a super-admin.
         await signOut(auth);
         toast({
             title: 'Acceso Denegado',
-            description: 'Este usuario no está registrado como abogado o su registro fue rechazado.',
+            description: 'No existe un perfil de abogado para esta cuenta. Por favor, regístrese o contacte al administrador.',
             variant: 'destructive',
         });
         return;
