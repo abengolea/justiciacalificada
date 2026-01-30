@@ -80,17 +80,17 @@ const baseFormSchema = z.object({
     .max(fiveYearsAgo, {
       message: 'Debe tener al menos 5 años de matriculación.',
     }),
-  credencial: z
-    .any()
-    .refine((files) => files?.length == 1, 'La foto de la credencial es requerida.')
-    .refine(
-      (files) => files?.[0]?.size <= 2 * 1024 * 1024,
-      `El tamaño máximo del archivo es 2MB.`
-    )
-    .refine(
-        (files) => ["image/jpeg", "image/png", "image/webp"].includes(files?.[0]?.type),
-        "Solo se aceptan formatos .jpg, .png y .webp."
-    ),
+  // credencial: z
+  //   .any()
+  //   .refine((files) => files?.length == 1, 'La foto de la credencial es requerida.')
+  //   .refine(
+  //     (files) => files?.[0]?.size <= 2 * 1024 * 1024,
+  //     `El tamaño máximo del archivo es 2MB.`
+  //   )
+  //   .refine(
+  //       (files) => ["image/jpeg", "image/png", "image/webp"].includes(files?.[0]?.type),
+  //       "Solo se aceptan formatos .jpg, .png y .webp."
+  //   ),
 });
 
 export default function RegisterPage() {
@@ -111,32 +111,39 @@ export default function RegisterPage() {
     },
   });
 
-  const fileRef = form.register('credencial');
+  // const fileRef = form.register('credencial');
 
   async function onSubmit(values: z.infer<typeof baseFormSchema>) {
     setIsLoading(true);
-    if (!values.password || values.password.length < 6) {
-      form.setError("password", {
-        type: "manual",
-        message: "La contraseña debe tener al menos 6 caracteres.",
-      });
+    if (!values.password) {
+      form.setError("password", { type: "manual", message: "La contraseña es requerida." });
+      setIsLoading(false);
+      return;
+    }
+    if (values.password.length < 6) {
+      form.setError("password", { type: "manual", message: "La contraseña debe tener al menos 6 caracteres." });
       setIsLoading(false);
       return;
     }
     
     let user: User | null = null;
     try {
-      // 1. Create user in Firebase Auth
+      console.log("Paso 1: Creando usuario...");
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
       user = userCredential.user;
+      console.log("Paso 1 completado. UID:", user.uid);
 
-      // 2. Upload credential file to Firebase Storage
-      const file = values.credencial[0];
-      const storageRef = ref(storage, `credenciales/${user.uid}/${file.name}`);
-      await uploadBytes(storageRef, file);
-      const credencialUrl = await getDownloadURL(storageRef);
+      // Paso 2 deshabilitado temporalmente
+      console.log("Paso 2: Subiendo credencial (deshabilitado temporalmente)");
+      // const file = values.credencial[0];
+      // const storageRef = ref(storage, `credenciales/${user.uid}/${file.name}`);
+      // await uploadBytes(storageRef, file);
+      // const credencialUrl = await getDownloadURL(storageRef);
+      const credencialUrl = ""; // Valor temporal
+      console.log("Paso 2 completado.");
 
-      // 3. Create lawyer document in Firestore
+
+      console.log("Paso 3: Creando documento de abogado en Firestore...");
       const lawyerData = {
         uid: user.uid,
         nombre: values.nombre,
@@ -149,13 +156,13 @@ export default function RegisterPage() {
         status: 'pending',
         registrationDate: serverTimestamp(),
       };
-
       const lawyerDocRef = doc(firestore, "lawyers", user.uid);
       await setDoc(lawyerDocRef, lawyerData);
+      console.log("Paso 3 completado.");
       
       const mailCollectionRef = collection(firestore, "mail");
       
-      // 4. Send email notification to admin for approval
+      console.log("Paso 4: Enviando correos de notificación...");
       const adminMailData = {
         to: ['justiciacalificada@gmail.com'],
         message: {
@@ -173,7 +180,6 @@ export default function RegisterPage() {
       };
       await addDoc(mailCollectionRef, adminMailData);
       
-      // 5. Send "pending" email to user
       const userMailData = {
         to: [values.email],
         message: {
@@ -187,6 +193,7 @@ export default function RegisterPage() {
         }
       }
       await addDoc(mailCollectionRef, userMailData);
+      console.log("Paso 4 completado.");
       
       toast({
         title: 'Registro Enviado',
@@ -195,14 +202,16 @@ export default function RegisterPage() {
         variant: 'default',
       });
       form.reset();
+
     } catch (error: any) {
       if (user) {
+        console.log("Error durante el registro, eliminando usuario parcial:", user.uid);
         await user.delete().catch(deleteError => {
-          console.error("Failed to clean up partially created user:", deleteError);
+          console.error("Fallo al limpiar usuario parcialmente creado:", deleteError);
         });
       }
 
-      console.error("Error de Registro:", error);
+      console.error("Error de Registro Detallado:", error);
 
       let title = 'Error en el Registro';
       let description = error.message || 'Ocurrió un error. Por favor, intente de nuevo.';
@@ -218,17 +227,18 @@ export default function RegisterPage() {
         variant: 'destructive',
       });
     } finally {
+      console.log("Proceso finalizado, limpiando estado de carga.");
       setIsLoading(false);
     }
   }
   
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
-    const isValid = await form.trigger(['nombre', 'apellido', 'matricula', 'fechaMatriculacion', 'credencial', 'email']);
+    const isValid = await form.trigger(['nombre', 'apellido', 'matricula', 'fechaMatriculacion', 'email']);
     if (!isValid) {
         toast({
             title: "Formulario incompleto",
-            description: "Por favor, complete todos los campos requeridos (excepto la contraseña) antes de registrarse con Google.",
+            description: "Por favor, complete todos los campos requeridos (excepto contraseña y credencial) antes de registrarse con Google.",
             variant: "destructive",
         });
         setGoogleLoading(false);
@@ -238,9 +248,10 @@ export default function RegisterPage() {
     const values = form.getValues();
 
     const provider = new GoogleAuthProvider();
+    let user: User | null = null;
     try {
         const result = await signInWithPopup(auth, provider);
-        const user = result.user;
+        user = result.user;
 
         const lawyerDocRefCheck = doc(firestore, "lawyers", user.uid);
         const docSnap = await getDoc(lawyerDocRefCheck);
@@ -251,6 +262,7 @@ export default function RegisterPage() {
                 description: 'Esta cuenta de Google ya se encuentra registrada. Por favor, intente iniciar sesión.',
                 variant: 'destructive',
             });
+            setGoogleLoading(false);
             return;
         }
         
@@ -261,13 +273,15 @@ export default function RegisterPage() {
                 description: 'El correo del formulario no coincide con su cuenta de Google. Por favor, use el mismo correo.',
                 variant: 'destructive',
             });
+            setGoogleLoading(false);
             return;
         }
-
-        const file = values.credencial[0];
-        const storageRef = ref(storage, `credenciales/${user.uid}/${file.name}`);
-        await uploadBytes(storageRef, file);
-        const credencialUrl = await getDownloadURL(storageRef);
+        
+        // const file = values.credencial[0];
+        // const storageRef = ref(storage, `credenciales/${user.uid}/${file.name}`);
+        // await uploadBytes(storageRef, file);
+        // const credencialUrl = await getDownloadURL(storageRef);
+        const credencialUrl = ""; // Valor temporal
 
         const lawyerData = {
             uid: user.uid,
@@ -308,9 +322,11 @@ export default function RegisterPage() {
     } catch (error: any) {
         console.error("Error de registro con Google:", error);
         
-        await signOut(auth).catch(signOutError => {
-            console.error("Failed to sign out user after Google registration error:", signOutError);
-        });
+        if (user) {
+            await signOut(auth).catch(signOutError => {
+                console.error("Fallo al cerrar sesión del usuario después de un error de registro con Google:", signOutError);
+            });
+        }
 
         toast({
             title: "Error de registro con Google",
@@ -428,7 +444,7 @@ export default function RegisterPage() {
                   </FormItem>
                 )}
               />
-
+{/* 
               <FormField
                 control={form.control}
                 name="credencial"
@@ -441,7 +457,7 @@ export default function RegisterPage() {
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+              /> */}
 
               <FormField
                 control={form.control}
