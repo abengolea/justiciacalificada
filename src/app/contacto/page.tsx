@@ -2,27 +2,19 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Mail, MapPin } from "lucide-react";
+import { Mail, MapPin, Loader2 } from "lucide-react";
 import { useFirebase, useUser, addDocumentNonBlocking } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 export default function ContactoPage() {
   const { firestore } = useFirebase();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
 
   const handleSendTestEmail = () => {
-    if (!firestore) return;
-
-    if (!user) {
-      toast({
-        title: 'Inicio de sesión requerido',
-        description: 'Debe iniciar sesión para poder enviar un correo de prueba.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    if (!firestore || !user) return;
 
     const mailCollectionRef = collection(firestore, "mail");
     const testEmail = {
@@ -94,12 +86,29 @@ export default function ContactoPage() {
 
           <div className="pt-6 border-t">
             <h3 className="text-lg font-semibold mb-2">Prueba de Envío</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Inicie sesión y haga clic aquí para enviar un correo electrónico de prueba y verificar la configuración.
-            </p>
-            <Button onClick={handleSendTestEmail} variant="secondary">
-              Enviar Correo de Prueba
-            </Button>
+            {isUserLoading ? (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verificando autenticación...
+              </div>
+            ) : user ? (
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Está conectado como {user.email}. Haga clic para enviar un correo de prueba.
+                </p>
+                <Button onClick={handleSendTestEmail} variant="secondary">
+                  Enviar Correo de Prueba
+                </Button>
+              </>
+            ) : (
+               <p className="text-sm text-muted-foreground">
+                Por favor,{' '}
+                <Link href="/login" className="underline hover:text-primary">
+                  inicie sesión
+                </Link>{' '}
+                para enviar un correo de prueba.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
