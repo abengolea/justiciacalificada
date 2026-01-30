@@ -30,6 +30,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { useFirebase, useUser, addDocumentNonBlocking } from "@/firebase";
 import { collection } from "firebase/firestore";
 
@@ -217,7 +218,7 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "PPP")
+                            format(field.value, "PPP", { locale: es })
                           ) : (
                             <span>Seleccione una fecha</span>
                           )}

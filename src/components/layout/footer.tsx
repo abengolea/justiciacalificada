@@ -26,9 +26,9 @@ export function SiteFooter() {
           </div>
         </div>
         {user?.role === 'admin' && (
-            <Link href="/admin" className="absolute bottom-4 right-4 hover:text-foreground" title="Admin">
+            <Link href="/admin" className="absolute bottom-4 right-4 hover:text-foreground" title="Administración">
               <Shield className="h-4 w-4 text-muted-foreground" />
-              <span className="sr-only">Admin</span>
+              <span className="sr-only">Administración</span>
             </Link>
         )}
       </div>

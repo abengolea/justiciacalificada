@@ -19,9 +19,9 @@ const fontHeadline = Belleza({
 });
 
 export const metadata: Metadata = {
-  title: "Qualified Justice",
+  title: "Justicia Calificada",
   description:
-    "A platform for lawyers in Argentina to anonymously rate and review courthouses to improve the judicial system.",
+    "Una plataforma para que los abogados de Argentina califiquen y revisen anónimamente los juzgados para mejorar el sistema judicial.",
 };
 
 export default function RootLayout({
@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link

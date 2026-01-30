@@ -84,7 +84,7 @@ export default function LoginPage() {
       if (lawyerData.role === 'admin') {
         toast({
           title: 'Inicio de sesión de Administrador',
-          description: 'Bienvenido, Admin.',
+          description: 'Bienvenido, administrador.',
         });
         router.push('/admin');
         return;
@@ -146,7 +146,7 @@ export default function LoginPage() {
       if (lawyerData.role === 'admin') {
         toast({
           title: 'Inicio de sesión de Administrador',
-          description: 'Bienvenido, Admin.',
+          description: 'Bienvenido, administrador.',
         });
         router.push('/admin');
         return;

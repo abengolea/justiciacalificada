@@ -49,7 +49,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           <SidebarHeader>
             <div className="flex items-center gap-2 p-2">
               <AppLogo className="w-6 h-6" />
-              <span className="text-lg font-semibold">Admin Panel</span>
+              <span className="text-lg font-semibold">Panel de Admin</span>
             </div>
           </SidebarHeader>
           <SidebarContent>

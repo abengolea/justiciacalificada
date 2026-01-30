@@ -1,27 +1,27 @@
 'use server';
 
 /**
- * @fileOverview A flow that summarizes lawyer comments for a given court.
+ * @fileOverview Un flujo que resume los comentarios de los abogados para un juzgado determinado.
  *
- * - summarizeCourtInsights - A function that summarizes lawyer comments for a given court.
- * - SummarizeCourtInsightsInput - The input type for the summarizeCourtInsights function.
- * - SummarizeCourtInsightsOutput - The return type for the summarizeCourtInsights function.
+ * - summarizeCourtInsights - Una función que resume los comentarios de los abogados para un juzgado determinado.
+ * - SummarizeCourtInsightsInput - El tipo de entrada para la función summarizeCourtInsights.
+ * - SummarizeCourtInsightsOutput - El tipo de retorno para la función summarizeCourtInsights.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const SummarizeCourtInsightsInputSchema = z.object({
-  courtId: z.string().describe('The ID of the court to summarize comments for.'),
+  courtId: z.string().describe('El ID del juzgado para el cual resumir los comentarios.'),
   comments: z
     .string()
     .array()
-    .describe('An array of comments to summarize for the court.'),
+    .describe('Un array de comentarios para resumir para el juzgado.'),
 });
 export type SummarizeCourtInsightsInput = z.infer<typeof SummarizeCourtInsightsInputSchema>;
 
 const SummarizeCourtInsightsOutputSchema = z.object({
-  summary: z.string().describe('A summary of the key insights and sentiment trends.'),
+  summary: z.string().describe('Un resumen de las ideas clave y las tendencias de sentimiento.'),
 });
 export type SummarizeCourtInsightsOutput = z.infer<typeof SummarizeCourtInsightsOutputSchema>;
 
@@ -35,11 +35,11 @@ const prompt = ai.definePrompt({
   name: 'summarizeCourtInsightsPrompt',
   input: {schema: SummarizeCourtInsightsInputSchema},
   output: {schema: SummarizeCourtInsightsOutputSchema},
-  prompt: `You are an AI assistant helping lawyers quickly understand the general consensus about a court.
+  prompt: `Eres un asistente de IA que ayuda a los abogados a comprender rápidamente el consenso general sobre un juzgado.
 
-  Summarize the key insights and sentiment trends from the following lawyer comments for court ID {{{courtId}}}. Return the result in the summary field.
+  Resume las ideas clave y las tendencias de sentimiento de los siguientes comentarios de abogados para el juzgado con ID {{{courtId}}}. Devuelve el resultado en el campo de resumen.
 
-  Comments:
+  Comentarios:
   {{#each comments}}
   - {{{this}}}
   {{/each}}`,

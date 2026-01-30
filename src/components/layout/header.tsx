@@ -241,14 +241,14 @@ export function SiteHeader() {
                       className="px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                     >
                       <Menu className="h-6 w-6" />
-                      <span className="sr-only">Toggle Menu</span>
+                      <span className="sr-only">Abrir menú</span>
                     </Button>
                   </SheetTrigger>
                   <SheetContent side="left" className="pr-0">
                     <Link
                       href="/"
                       className="mb-6 flex items-center space-x-2"
-                      aria-label="Home"
+                      aria-label="Inicio"
                     >
                       <AppLogo className="h-8 w-8" />
                       <span className="font-bold">JUSTICIA CALIFICADA</span>

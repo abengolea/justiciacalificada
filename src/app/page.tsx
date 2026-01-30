@@ -12,7 +12,7 @@ export default function Home() {
           src="https://picsum.photos/seed/justice/1920/1080"
           data-ai-hint="gavel justice court"
           fill
-          alt="Hero"
+          alt="Imagen principal"
           className="object-cover -z-10 brightness-[.4]"
         />
         <div className="container px-4 md:px-6 text-center">
