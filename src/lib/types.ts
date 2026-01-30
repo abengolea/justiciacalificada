@@ -62,5 +62,5 @@ export interface User {
   email: string;
   matricula: string;
   role: 'admin' | 'user';
-  status: 'pending' | 'approved';
+  status: 'pending' | 'approved' | 'rejected';
 }

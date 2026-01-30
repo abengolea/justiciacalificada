@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { mockUsers } from '@/lib/data';
 import {
   Table,
   TableBody,
@@ -11,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Check, Trash2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Check, Trash2, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,10 +31,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  useCollection,
+  useFirebase,
+  useMemoFirebase,
+  updateDocumentNonBlocking,
+  addDocumentNonBlocking,
+  deleteDocumentNonBlocking
+} from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const { firestore } = useFirebase();
+  const usersQuery = useMemoFirebase(() => collection(firestore, 'lawyers'), [firestore]);
+  const { data: users, isLoading } = useCollection<User>(usersQuery);
+
   const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [userIdToDelete, setUserIdToDelete] = useState<string | null>(null);
@@ -58,11 +70,28 @@ export default function AdminUsersPage() {
     });
   };
   
-  const handleUpdateStatus = (id: string, status: 'approved') => {
-    setUsers(users.map((u) => u.id === id ? { ...u, status } : u));
+  const handleUpdateStatus = (userToUpdate: User, status: 'approved' | 'rejected') => {
+    const lawyerDocRef = doc(firestore, 'lawyers', userToUpdate.id);
+    updateDocumentNonBlocking(lawyerDocRef, { status });
+
+    const mailCollectionRef = collection(firestore, "mail");
+    const mailData = {
+      to: [userToUpdate.email],
+      message: {
+        subject: `Su registro en Justicia Calificada ha sido ${status === 'approved' ? 'aprobado' : 'rechazado'}`,
+        html: `
+          <p>Hola ${userToUpdate.nombre},</p>
+          <p>Le informamos que su solicitud de registro en Justicia Calificada ha sido <strong>${status === 'approved' ? 'APROBADA' : 'RECHAZADA'}</strong>.</p>
+          ${status === 'approved' ? '<p>Ya puede iniciar sesión en la plataforma y comenzar a calificar juzgados.</p>' : '<p>Si cree que esto es un error, por favor póngase en contacto con nosotros.</p>'}
+          <p>Atentamente,<br>El equipo de Justicia Calificada</p>
+        `,
+      },
+    };
+    addDocumentNonBlocking(mailCollectionRef, mailData);
+
     toast({
-      title: 'Usuario aprobado',
-      description: 'El registro del usuario ha sido aprobado.',
+      title: `Usuario ${status === 'approved' ? 'aprobado' : 'rechazado'}`,
+      description: `El registro del usuario ha sido ${status === 'approved' ? 'aprobado' : 'rechazado'}. Se ha enviado una notificación por correo.`,
     });
   };
 
@@ -74,7 +103,9 @@ export default function AdminUsersPage() {
   const handleDelete = () => {
     if (!userIdToDelete) return;
 
-    setUsers((prev) => prev.filter((u) => u.id !== userIdToDelete));
+    const lawyerDocRef = doc(firestore, 'lawyers', userIdToDelete);
+    deleteDocumentNonBlocking(lawyerDocRef);
+    
     toast({
       title: 'Usuario eliminado',
       description: 'El usuario ha sido eliminado correctamente.',
@@ -87,6 +118,7 @@ export default function AdminUsersPage() {
   const statusBadgeVariant = {
       pending: 'secondary',
       approved: 'default',
+      rejected: 'destructive',
   } as const;
 
   return (
@@ -112,7 +144,18 @@ export default function AdminUsersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
+            {isLoading && (
+              <>
+                {[...Array(5)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={6}>
+                      <Skeleton className="h-8 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </>
+            )}
+            {users && users.map((user) => (
               <TableRow key={user.id} className={user.status === 'pending' ? 'bg-accent/50' : ''}>
                 <TableCell className="font-medium">
                   {user.nombre} {user.apellido}
@@ -126,7 +169,9 @@ export default function AdminUsersPage() {
                 </TableCell>
                 <TableCell>
                   <Badge variant={statusBadgeVariant[user.status]}>
-                    {user.status === 'pending' ? 'Pendiente' : 'Aprobado'}
+                     {user.status === 'pending' && 'Pendiente'}
+                     {user.status === 'approved' && 'Aprobado'}
+                     {user.status === 'rejected' && 'Rechazado'}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
@@ -140,9 +185,13 @@ export default function AdminUsersPage() {
                     <DropdownMenuContent align="end">
                       {user.status === 'pending' && (
                         <>
-                          <DropdownMenuItem onSelect={() => handleUpdateStatus(user.id, 'approved')}>
+                          <DropdownMenuItem onSelect={() => handleUpdateStatus(user, 'approved')}>
                             <Check className="mr-2 h-4 w-4" />
                             Aprobar Registro
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleUpdateStatus(user, 'rejected')} className="text-destructive">
+                            <X className="mr-2 h-4 w-4" />
+                            Rechazar Registro
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                         </>
@@ -162,6 +211,13 @@ export default function AdminUsersPage() {
                 </TableCell>
               </TableRow>
             ))}
+            {!isLoading && (!users || users.length === 0) && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center h-24">
+                  No se encontraron usuarios.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>

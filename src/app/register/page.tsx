@@ -140,8 +140,10 @@ export default function RegisterPage() {
       const lawyerDocRef = doc(firestore, "lawyers", user.uid);
       setDocumentNonBlocking(lawyerDocRef, lawyerData, {});
       
+      const mailCollectionRef = collection(firestore, "mail");
+      
       // 4. Send email notification to admin for approval
-      const mailData = {
+      const adminMailData = {
         to: ['justiciacalificada@gmail.com'],
         message: {
             subject: `Nuevo Registro Pendiente: ${values.nombre} ${values.apellido}`,
@@ -156,8 +158,22 @@ export default function RegisterPage() {
             `,
         },
       };
-      const mailCollectionRef = collection(firestore, "mail");
-      addDocumentNonBlocking(mailCollectionRef, mailData);
+      addDocumentNonBlocking(mailCollectionRef, adminMailData);
+      
+      // 5. Send "pending" email to user
+      const userMailData = {
+        to: [values.email],
+        message: {
+          subject: 'Hemos recibido su solicitud de registro',
+          html: `
+            <p>Hola ${values.nombre},</p>
+            <p>Gracias por registrarse en Justicia Calificada. Su solicitud ha sido recibida y está siendo revisada por nuestros administradores.</p>
+            <p>Recibirá otro correo electrónico una vez que su cuenta haya sido aprobada.</p>
+            <p>Atentamente,<br>El equipo de Justicia Calificada</p>
+          `
+        }
+      }
+      addDocumentNonBlocking(mailCollectionRef, userMailData);
       
       toast({
         title: 'Registro Enviado',
