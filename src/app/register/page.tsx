@@ -41,6 +41,7 @@ import {
   addDocumentNonBlocking,
 } from '@/firebase';
 import {
+  User,
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
@@ -122,10 +123,11 @@ export default function RegisterPage() {
 
   async function onSubmit(values: z.infer<typeof emailPasswordFormSchema>) {
     setIsLoading(true);
+    let user: User | null = null; // To hold the created user
     try {
       // 1. Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
-      const user = userCredential.user;
+      user = userCredential.user;
 
       // 2. Upload credential file to Firebase Storage
       const file = values.credencial[0];
@@ -193,6 +195,13 @@ export default function RegisterPage() {
       });
       form.reset();
     } catch (error: any) {
+      // If user was created, but a subsequent step failed, we should delete them to allow a retry.
+      if (user) {
+        await user.delete().catch(deleteError => {
+          console.error("Failed to clean up partially created user:", deleteError);
+        });
+      }
+
       let title = 'Error en el Registro';
       let description = 'Ocurrió un error. Por favor, intente de nuevo.';
 
@@ -298,6 +307,11 @@ export default function RegisterPage() {
         });
         form.reset();
     } catch (error: any) {
+        // If an error occurred during profile creation, sign the user out to avoid an inconsistent state
+        await signOut(auth).catch(signOutError => {
+            console.error("Failed to sign out user after Google registration error:", signOutError);
+        });
+
         toast({
             title: "Error de registro con Google",
             description: "No se pudo completar el registro. Inténtalo de nuevo.",
