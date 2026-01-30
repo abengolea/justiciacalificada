@@ -119,7 +119,15 @@ export default function RegisterPage() {
 
   const fileRef = form.register('credencial');
 
-  async function onSubmit(values: z.infer<typeof emailPasswordFormSchema>) {
+  async function onSubmit(values: z.infer<typeof baseFormSchema>) {
+    if (!values.password || values.password.length < 6) {
+      form.setError("password", {
+        type: "manual",
+        message: "La contraseña debe tener al menos 6 caracteres.",
+      });
+      return;
+    }
+    
     setIsLoading(true);
     let user: User | null = null;
     try {
@@ -304,11 +312,11 @@ export default function RegisterPage() {
         });
         form.reset();
     } catch (error: any) {
+        console.error("Error de registro con Google:", error);
+        
         await signOut(auth).catch(signOutError => {
             console.error("Failed to sign out user after Google registration error:", signOutError);
         });
-
-        console.error("Error de registro con Google:", error);
 
         toast({
             title: "Error de registro con Google",
