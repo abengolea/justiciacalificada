@@ -30,6 +30,8 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
+import { useFirebase, useUser, addDocumentNonBlocking } from "@/firebase";
+import { collection } from "firebase/firestore";
 
 
 const formSchema = z.object({
@@ -89,6 +91,9 @@ const StarRating = ({
 
 export function RatingForm({ courthouseId }: { courthouseId: string }) {
   const { toast } = useToast();
+  const { firestore } = useFirebase();
+  const { user } = useUser();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -109,19 +114,44 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // En una aplicación real, esto se enviaría a un backend.
-    const newRating = { 
-      id: `rating-${Date.now()}`,
-      juzgadoId, 
-      usuarioId: 'user-1', // Mock user
+    if (!user) {
+        toast({
+            title: "Acción requerida",
+            description: "Debe iniciar sesión para poder calificar un juzgado.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const ratingsCollectionRef = collection(firestore, 'courthouses', courthouseId, 'ratings');
+    
+    const newRatingData = { 
+      juzgadoId: courthouseId, 
+      usuarioId: user.uid,
       ...values,
       fechaCalificacion: new Date().toISOString(),
       fechaExperiencia: values.fechaExperiencia.toISOString(),
       status: 'pending' as const,
     };
     
-    console.log("Nuevo comentario enviado para moderación:", newRating);
-    console.log("Simulando envío de email a admin@example.com...");
+    addDocumentNonBlocking(ratingsCollectionRef, newRatingData);
+    
+    // Send email notification to admin for moderation
+    const mailData = {
+        to: ['justiciacalificada@gmail.com'],
+        message: {
+            subject: 'Nuevo Comentario Pendiente de Moderación',
+            html: `
+                <p>Un abogado ha dejado un nuevo comentario y está esperando moderación.</p>
+                <p><strong>ID de Juzgado:</strong> ${courthouseId}</p>
+                <p><strong>Comentario:</strong></p>
+                <blockquote style="border-left: 2px solid #ccc; padding-left: 1rem; margin-left: 1rem; font-style: italic;">${values.comentario}</blockquote>
+                <p>Por favor, ingrese al <a href="https://qualified-justice.web.app/admin/comentarios">panel de administración</a> para moderar el comentario.</p>
+            `,
+        },
+    };
+    const mailCollectionRef = collection(firestore, "mail");
+    addDocumentNonBlocking(mailCollectionRef, mailData);
     
     toast({
       title: "Calificación Enviada",

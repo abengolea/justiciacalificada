@@ -37,14 +37,15 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import {
   useFirebase,
-  setDocumentNonBlocking
+  setDocumentNonBlocking,
+  addDocumentNonBlocking,
 } from '@/firebase';
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import { doc, serverTimestamp } from 'firebase/firestore';
+import { doc, serverTimestamp, collection } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 
@@ -138,6 +139,25 @@ export default function RegisterPage() {
 
       const lawyerDocRef = doc(firestore, "lawyers", user.uid);
       setDocumentNonBlocking(lawyerDocRef, lawyerData, {});
+      
+      // 4. Send email notification to admin for approval
+      const mailData = {
+        to: ['justiciacalificada@gmail.com'],
+        message: {
+            subject: `Nuevo Registro Pendiente: ${values.nombre} ${values.apellido}`,
+            html: `
+                <p>Un nuevo abogado se ha registrado y está esperando aprobación.</p>
+                <ul>
+                    <li><strong>Nombre:</strong> ${values.nombre} ${values.apellido}</li>
+                    <li><strong>Email:</strong> ${values.email}</li>
+                    <li><strong>Matrícula:</strong> ${values.matricula}</li>
+                </ul>
+                <p>Por favor, ingrese al <a href="https://qualified-justice.web.app/admin/usuarios">panel de administración</a> para revisar la solicitud.</p>
+            `,
+        },
+      };
+      const mailCollectionRef = collection(firestore, "mail");
+      addDocumentNonBlocking(mailCollectionRef, mailData);
       
       toast({
         title: 'Registro Enviado',
