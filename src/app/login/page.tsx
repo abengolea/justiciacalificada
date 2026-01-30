@@ -26,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -59,56 +59,67 @@ export default function LoginPage() {
     },
   });
 
+  const handleSuccessfulLogin = async (user: User) => {
+    // 1. Check for admin status
+    const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
+    const lawyerProfileRef = doc(firestore, 'lawyers', user.uid);
+    
+    const [adminRoleDoc, lawyerProfileDoc] = await Promise.all([
+        getDoc(adminRoleRef),
+        getDoc(lawyerProfileRef)
+    ]);
+
+    const isAdminByRole = adminRoleDoc.exists();
+    const isAdminInLawyerProfile = lawyerProfileDoc.exists() && lawyerProfileDoc.data()?.role === 'admin';
+
+    if (isAdminByRole || isAdminInLawyerProfile) {
+        toast({
+            title: 'Inicio de sesión de Administrador',
+            description: 'Bienvenido, administrador.',
+        });
+        router.push('/admin');
+        return;
+    }
+
+    // 2. If not admin, check for approved lawyer status
+    if (!lawyerProfileDoc.exists()) {
+        await signOut(auth);
+        toast({
+            title: 'Acceso Denegado',
+            description: 'Este usuario no está registrado como abogado o su registro fue rechazado.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
+    const lawyerData = lawyerProfileDoc.data();
+
+    if (lawyerData.status !== 'approved') {
+        await signOut(auth);
+        const description = lawyerData.status === 'pending'
+            ? 'Su cuenta aún está pendiente de aprobación por un administrador.'
+            : 'Su registro fue rechazado. Póngase en contacto para más información.';
+        toast({
+            title: 'Acceso Denegado',
+            description,
+            variant: 'destructive',
+        });
+        return;
+    }
+
+    // 3. If approved lawyer, grant access
+    toast({
+        title: 'Inicio de sesión exitoso',
+        description: 'Bienvenido de nuevo.',
+    });
+    router.push('/');
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-
-      const lawyerDocRef = doc(firestore, "lawyers", user.uid);
-      const lawyerDoc = await getDoc(lawyerDocRef);
-
-      if (!lawyerDoc.exists()) {
-        await signOut(auth);
-        toast({
-          title: 'Acceso Denegado',
-          description: 'Este usuario no está registrado como abogado o su registro fue rechazado.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-      
-      const lawyerData = lawyerDoc.data();
-
-      if (lawyerData.role === 'admin') {
-        toast({
-          title: 'Inicio de sesión de Administrador',
-          description: 'Bienvenido, administrador.',
-        });
-        router.push('/admin');
-        return;
-      }
-
-      if (lawyerData.status !== 'approved') {
-        await signOut(auth);
-        const description = lawyerData.status === 'pending'
-          ? 'Su cuenta aún está pendiente de aprobación por un administrador.'
-          : 'Su registro fue rechazado. Póngase en contacto para más información.';
-        toast({
-          title: 'Acceso Denegado',
-          description,
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      toast({
-        title: 'Inicio de sesión exitoso',
-        description: 'Bienvenido de nuevo.',
-      });
-      router.push('/');
+      await handleSuccessfulLogin(userCredential.user);
     } catch (error: any) {
       console.error("Login error:", error);
       toast({
@@ -116,7 +127,8 @@ export default function LoginPage() {
         description: 'El email o la contraseña son incorrectos. Por favor, intente de nuevo.',
         variant: 'destructive',
       });
-      setIsLoading(false);
+    } finally {
+        setIsLoading(false);
     }
   }
 
@@ -125,58 +137,17 @@ export default function LoginPage() {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      
-      const lawyerDocRef = doc(firestore, "lawyers", user.uid);
-      const lawyerDoc = await getDoc(lawyerDocRef);
-
-      if (!lawyerDoc.exists()) {
-        await signOut(auth);
-        toast({
-            title: "Usuario no registrado",
-            description: "No se encontró un registro de abogado para esta cuenta de Google.",
-            variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      
-      const lawyerData = lawyerDoc.data();
-
-      if (lawyerData.role === 'admin') {
-        toast({
-          title: 'Inicio de sesión de Administrador',
-          description: 'Bienvenido, administrador.',
-        });
-        router.push('/admin');
-        return;
-      }
-      
-      if (lawyerData.status !== 'approved') {
-         await signOut(auth);
-         const description = lawyerData.status === 'pending'
-            ? 'Su cuenta aún está pendiente de aprobación por un administrador.'
-            : 'Su registro fue rechazado. Póngase en contacto para más información.';
-         toast({
-          title: 'Acceso Denegado',
-          description,
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      toast({
-        title: 'Inicio de sesión con Google exitoso',
-      });
-      router.push('/');
+      await handleSuccessfulLogin(result.user);
     } catch (error: any) {
         console.error("Google Sign-In Error", error);
-        toast({
-            title: "Error de inicio de sesión con Google",
-            description: "No se pudo iniciar sesión con Google. Inténtalo de nuevo.",
-            variant: "destructive",
-        });
+        if (error.code !== 'auth/popup-closed-by-user') {
+            toast({
+                title: "Error de inicio de sesión con Google",
+                description: "No se pudo iniciar sesión con Google. Inténtalo de nuevo.",
+                variant: "destructive",
+            });
+        }
+    } finally {
         setIsLoading(false);
     }
   }
