@@ -68,11 +68,33 @@ export default function LoginPage() {
       const lawyerDocRef = doc(firestore, "lawyers", user.uid);
       const lawyerDoc = await getDoc(lawyerDocRef);
 
-      if (!lawyerDoc.exists() || lawyerDoc.data().status !== 'approved') {
+      if (!lawyerDoc.exists()) {
         await signOut(auth);
-        const description = !lawyerDoc.exists()
-          ? 'Este usuario no está registrado como abogado o su registro fue rechazado.'
-          : 'Su cuenta aún está pendiente de aprobación por un administrador.';
+        toast({
+          title: 'Acceso Denegado',
+          description: 'Este usuario no está registrado como abogado o su registro fue rechazado.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      const lawyerData = lawyerDoc.data();
+
+      if (lawyerData.role === 'admin') {
+        toast({
+          title: 'Inicio de sesión de Administrador',
+          description: 'Bienvenido, Admin.',
+        });
+        router.push('/admin');
+        return;
+      }
+
+      if (lawyerData.status !== 'approved') {
+        await signOut(auth);
+        const description = lawyerData.status === 'pending'
+          ? 'Su cuenta aún está pendiente de aprobación por un administrador.'
+          : 'Su registro fue rechazado. Póngase en contacto para más información.';
         toast({
           title: 'Acceso Denegado',
           description,
@@ -94,7 +116,6 @@ export default function LoginPage() {
         description: 'El email o la contraseña son incorrectos. Por favor, intente de nuevo.',
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   }
@@ -113,7 +134,7 @@ export default function LoginPage() {
         await signOut(auth);
         toast({
             title: "Usuario no registrado",
-            description: "Por favor, complete el formulario de registro para crear una cuenta.",
+            description: "No se encontró un registro de abogado para esta cuenta de Google.",
             variant: "destructive",
         });
         setIsLoading(false);
@@ -121,11 +142,24 @@ export default function LoginPage() {
       }
       
       const lawyerData = lawyerDoc.data();
+
+      if (lawyerData.role === 'admin') {
+        toast({
+          title: 'Inicio de sesión de Administrador',
+          description: 'Bienvenido, Admin.',
+        });
+        router.push('/admin');
+        return;
+      }
+      
       if (lawyerData.status !== 'approved') {
          await signOut(auth);
+         const description = lawyerData.status === 'pending'
+            ? 'Su cuenta aún está pendiente de aprobación por un administrador.'
+            : 'Su registro fue rechazado. Póngase en contacto para más información.';
          toast({
-          title: 'Cuenta Pendiente',
-          description: 'Su cuenta aún está pendiente de aprobación por un administrador.',
+          title: 'Acceso Denegado',
+          description,
           variant: 'destructive',
         });
         setIsLoading(false);
@@ -143,7 +177,6 @@ export default function LoginPage() {
             description: "No se pudo iniciar sesión con Google. Inténtalo de nuevo.",
             variant: "destructive",
         });
-    } finally {
         setIsLoading(false);
     }
   }
