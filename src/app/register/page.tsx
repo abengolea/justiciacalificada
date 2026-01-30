@@ -44,8 +44,9 @@ import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  signOut,
 } from 'firebase/auth';
-import { doc, serverTimestamp, collection } from 'firebase/firestore';
+import { doc, serverTimestamp, collection, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { es } from 'date-fns/locale';
 
@@ -62,7 +63,7 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const fiveYearsAgo = new Date();
 fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
 
-const formSchema = z.object({
+const baseFormSchema = z.object({
   nombre: z.string().min(2, { message: 'El nombre es requerido.' }),
   apellido: z.string().min(2, { message: 'El apellido es requerido.' }),
   matricula: z
@@ -71,7 +72,8 @@ const formSchema = z.object({
   email: z.string().email({ message: 'Por favor, ingrese un email válido.' }),
   password: z
     .string()
-    .min(6, { message: 'La contraseña debe tener al menos 6 caracteres.' }),
+    .min(6, { message: 'La contraseña debe tener al menos 6 caracteres.' })
+    .optional(),
   fechaMatriculacion: z
     .date({
       required_error: 'La fecha de matriculación es requerida.',
@@ -92,14 +94,21 @@ const formSchema = z.object({
     ),
 });
 
+const emailPasswordFormSchema = baseFormSchema.refine(data => !!data.password && data.password.length >= 6, {
+    message: "La contraseña debe tener al menos 6 caracteres.",
+    path: ["password"],
+});
+
+
 export default function RegisterPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { auth, firestore, storage } = useFirebase();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setGoogleLoading] = useState(false);
   
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof baseFormSchema>>({
+    resolver: zodResolver(baseFormSchema),
     defaultValues: {
       nombre: '',
       apellido: '',
@@ -111,11 +120,11 @@ export default function RegisterPage() {
 
   const fileRef = form.register('credencial');
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof emailPasswordFormSchema>) {
     setIsLoading(true);
     try {
       // 1. Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
       const user = userCredential.user;
 
       // 2. Upload credential file to Firebase Storage
@@ -190,8 +199,6 @@ export default function RegisterPage() {
       if (error.code === 'auth/email-already-in-use') {
         title = 'Email ya registrado';
         description = 'Este correo electrónico ya se encuentra registrado. Por favor, intente iniciar sesión.';
-      } else {
-        description = error.message || description;
       }
       
       toast({
@@ -205,28 +212,99 @@ export default function RegisterPage() {
   }
   
   async function handleGoogleSignIn() {
-    setIsLoading(true);
+    // 1. Validate form fields except for password
+    const isValid = await form.trigger(['nombre', 'apellido', 'matricula', 'fechaMatriculacion', 'credencial', 'email']);
+    if (!isValid) {
+        toast({
+            title: "Formulario incompleto",
+            description: "Por favor, complete todos los campos requeridos (excepto la contraseña) antes de registrarse con Google.",
+            variant: "destructive",
+        });
+        return;
+    }
+    
+    const values = form.getValues();
+
+    setGoogleLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-        await signInWithPopup(auth, provider);
-        // On successful sign-in, Firebase's onAuthStateChanged listener
-        // will handle the user state. We can then redirect the user.
-        // We'll also need a Firestore document created for them if it doesn't exist.
-        // This logic is best handled in a central place, like the FirebaseProvider or a custom hook.
-        // For now, we redirect and assume the user profile will be created or checked elsewhere.
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+
+        // Check if a lawyer with this UID already exists
+        const lawyerDocRefCheck = doc(firestore, "lawyers", user.uid);
+        const docSnap = await getDoc(lawyerDocRefCheck);
+        if (docSnap.exists()) {
+             await signOut(auth); // Log them out
+             toast({
+                title: 'Email ya registrado',
+                description: 'Esta cuenta de Google ya se encuentra registrada. Por favor, intente iniciar sesión.',
+                variant: 'destructive',
+            });
+            setGoogleLoading(false);
+            return;
+        }
+        
+        if (user.email !== values.email) {
+            await signOut(auth); // Log them out
+            toast({
+                title: 'Correo no coincide',
+                description: 'El correo del formulario no coincide con su cuenta de Google. Por favor, use el mismo correo.',
+                variant: 'destructive',
+            });
+            setGoogleLoading(false);
+            return;
+        }
+
+        const file = values.credencial[0];
+        const storageRef = ref(storage, `credenciales/${user.uid}/${file.name}`);
+        await uploadBytes(storageRef, file);
+        const credencialUrl = await getDownloadURL(storageRef);
+
+        const lawyerData = {
+            uid: user.uid,
+            nombre: values.nombre,
+            apellido: values.apellido,
+            email: user.email!,
+            matricula: values.matricula,
+            fechaMatriculacion: values.fechaMatriculacion.toISOString(),
+            credencialUrl: credencialUrl,
+            role: 'user',
+            status: 'pending',
+            registrationDate: serverTimestamp(),
+        };
+
+        const lawyerDocRef = doc(firestore, "lawyers", user.uid);
+        setDocumentNonBlocking(lawyerDocRef, lawyerData, {});
+        
+        const mailCollectionRef = collection(firestore, "mail");
+        
+        const adminMailData = {
+            to: ['justiciacalificada@gmail.com'],
+            message: { subject: `Nuevo Registro (Google) Pendiente: ${values.nombre} ${values.apellido}`, html: `<p>Un nuevo abogado se ha registrado con Google y está esperando aprobación.</p><ul><li><strong>Nombre:</strong> ${values.nombre} ${values.apellido}</li><li><strong>Email:</strong> ${user.email}</li><li><strong>Matrícula:</strong> ${values.matricula}</li></ul><p>Por favor, ingrese al <a href="https://qualified-justice.web.app/admin/usuarios">panel de administración</a> para revisar la solicitud.</p>` },
+        };
+        addDocumentNonBlocking(mailCollectionRef, adminMailData);
+        
+        const userMailData = {
+            to: [user.email!],
+            message: { subject: 'Hemos recibido su solicitud de registro', html: `<p>Hola ${values.nombre},</p><p>Gracias por registrarse en Justicia Calificada. Su solicitud ha sido recibida y está siendo revisada por nuestros administradores.</p><p>Recibirá otro correo electrónico una vez que su cuenta haya sido aprobada.</p><p>Atentamente,<br>El equipo de Justicia Calificada</p>` }
+        };
+        addDocumentNonBlocking(mailCollectionRef, userMailData);
+        
         toast({
-            title: 'Inicio de sesión con Google exitoso',
-            description: "Serás redirigido a la página principal.",
+            title: 'Registro Enviado',
+            description: 'Su solicitud ha sido enviada. Recibirá un email cuando su cuenta sea aprobada.',
+            variant: 'default',
         });
-        router.push('/');
+        form.reset();
     } catch (error: any) {
         toast({
-            title: "Error de inicio de sesión con Google",
-            description: "No se pudo iniciar sesión con Google. Inténtalo de nuevo.",
+            title: "Error de registro con Google",
+            description: "No se pudo completar el registro. Inténtalo de nuevo.",
             variant: "destructive",
         });
     } finally {
-        setIsLoading(false);
+        setGoogleLoading(false);
     }
 }
 
@@ -255,7 +333,7 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Nombre</FormLabel>
                       <FormControl>
-                        <Input placeholder="Juan" {...field} disabled={isLoading}/>
+                        <Input placeholder="Juan" {...field} disabled={isLoading || isGoogleLoading}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -268,7 +346,7 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Apellido</FormLabel>
                       <FormControl>
-                        <Input placeholder="Pérez" {...field} disabled={isLoading}/>
+                        <Input placeholder="Pérez" {...field} disabled={isLoading || isGoogleLoading}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -283,7 +361,7 @@ export default function RegisterPage() {
                   <FormItem>
                     <FormLabel>Matrícula Profesional</FormLabel>
                     <FormControl>
-                      <Input placeholder="Tomo 123 Folio 45" {...field} disabled={isLoading}/>
+                      <Input placeholder="Tomo 123 Folio 45" {...field} disabled={isLoading || isGoogleLoading}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -305,7 +383,7 @@ export default function RegisterPage() {
                               'w-full pl-3 text-left font-normal',
                               !field.value && 'text-muted-foreground'
                             )}
-                            disabled={isLoading}
+                            disabled={isLoading || isGoogleLoading}
                           >
                             {field.value ? (
                               format(field.value, 'PPP', { locale: es })
@@ -344,7 +422,7 @@ export default function RegisterPage() {
                   <FormItem>
                     <FormLabel>Foto de la Credencial</FormLabel>
                      <FormControl>
-                        <Input type="file" {...fileRef} disabled={isLoading} />
+                        <Input type="file" {...fileRef} disabled={isLoading || isGoogleLoading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -362,7 +440,7 @@ export default function RegisterPage() {
                         type="email"
                         placeholder="m@ejemplo.com"
                         {...field}
-                        disabled={isLoading}
+                        disabled={isLoading || isGoogleLoading}
                       />
                     </FormControl>
                     <FormMessage />
@@ -376,7 +454,7 @@ export default function RegisterPage() {
                   <FormItem>
                     <FormLabel>Contraseña</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} disabled={isLoading}/>
+                      <Input type="password" {...field} disabled={isLoading || isGoogleLoading}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -393,13 +471,13 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <Button variant="outline" type="button" onClick={handleGoogleSignIn} disabled={isLoading}>
-                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2 h-4 w-4" />}
+              <Button variant="outline" type="button" onClick={handleGoogleSignIn} disabled={isLoading || isGoogleLoading}>
+                 {isGoogleLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIcon className="mr-2 h-4 w-4" />}
                 Registrarse con Google
               </Button>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || isGoogleLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Crear Cuenta
               </Button>
