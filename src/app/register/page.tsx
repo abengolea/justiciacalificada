@@ -47,6 +47,7 @@ import {
 } from 'firebase/auth';
 import { doc, serverTimestamp, collection } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { es } from 'date-fns/locale';
 
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -184,9 +185,19 @@ export default function RegisterPage() {
       router.push('/');
     } catch (error: any) {
       console.error("Registration error:", error);
+      let title = 'Error en el Registro';
+      let description = 'Ocurrió un error. Por favor, intente de nuevo.';
+
+      if (error.code === 'auth/email-already-in-use') {
+        title = 'Email ya registrado';
+        description = 'Este correo electrónico ya se encuentra registrado. Por favor, intente iniciar sesión.';
+      } else {
+        description = error.message || description;
+      }
+      
       toast({
-        title: 'Error en el Registro',
-        description: error.message || 'Ocurrió un error. Por favor, intente de nuevo.',
+        title,
+        description,
         variant: 'destructive',
       });
     } finally {
@@ -299,7 +310,7 @@ export default function RegisterPage() {
                             disabled={isLoading}
                           >
                             {field.value ? (
-                              format(field.value, 'dd/MM/yyyy')
+                              format(field.value, 'PPP', { locale: es })
                             ) : (
                               <span>Seleccione una fecha</span>
                             )}
@@ -309,9 +320,13 @@ export default function RegisterPage() {
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
+                          locale={es}
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
+                          captionLayout="dropdown-buttons"
+                          fromYear={1950}
+                          toYear={new Date().getFullYear()}
                           disabled={(date) =>
                             date > fiveYearsAgo || date < new Date('1950-01-01')
                           }
