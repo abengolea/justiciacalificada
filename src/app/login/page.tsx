@@ -60,41 +60,47 @@ export default function LoginPage() {
   });
 
   const handleSuccessfulLogin = async (user: User) => {
-    // 1. Check for admin status
     const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
-    const lawyerProfileRef = doc(firestore, 'lawyers', user.uid);
+    const adminRoleDoc = await getDoc(adminRoleRef);
     
-    const [adminRoleDoc, lawyerProfileDoc] = await Promise.all([
-        getDoc(adminRoleRef),
-        getDoc(lawyerProfileRef)
-    ]);
-
-    const isAdminByRole = adminRoleDoc.exists();
-    const isAdminInLawyerProfile = lawyerProfileDoc.exists() && lawyerProfileDoc.data()?.role === 'admin';
-
-    if (isAdminByRole || isAdminInLawyerProfile) {
+    // Explicitly check for the super-admin role first.
+    if (adminRoleDoc.exists()) {
         toast({
             title: 'Inicio de sesión de Administrador',
             description: 'Bienvenido, administrador.',
         });
         router.push('/admin');
-        return;
+        return; // Exit early if super-admin
     }
 
-    // 2. If not admin, check for approved lawyer status
-    if (!lawyerProfileDoc.exists()) {
-        await signOut(auth);
-        toast({
-            title: 'Acceso Denegado',
-            description: 'Este usuario no está registrado como abogado o su registro fue rechazado.',
-            variant: 'destructive',
-        });
-        return;
-    }
+    // If not a super-admin, then check the lawyer profile.
+    const lawyerProfileRef = doc(firestore, 'lawyers', user.uid);
+    const lawyerProfileDoc = await getDoc(lawyerProfileRef);
 
-    const lawyerData = lawyerProfileDoc.data();
+    if (lawyerProfileDoc.exists()) {
+        const lawyerData = lawyerProfileDoc.data();
+        
+        // Check if the lawyer is an admin
+        if (lawyerData.role === 'admin') {
+            toast({
+                title: 'Inicio de sesión de Administrador',
+                description: 'Bienvenido, administrador.',
+            });
+            router.push('/admin');
+            return;
+        }
 
-    if (lawyerData.status !== 'approved') {
+        // Check if the lawyer is approved
+        if (lawyerData.status === 'approved') {
+            toast({
+                title: 'Inicio de sesión exitoso',
+                description: 'Bienvenido de nuevo.',
+            });
+            router.push('/');
+            return;
+        }
+
+        // If lawyer is pending or rejected
         await signOut(auth);
         const description = lawyerData.status === 'pending'
             ? 'Su cuenta aún está pendiente de aprobación por un administrador.'
@@ -105,14 +111,17 @@ export default function LoginPage() {
             variant: 'destructive',
         });
         return;
-    }
 
-    // 3. If approved lawyer, grant access
-    toast({
-        title: 'Inicio de sesión exitoso',
-        description: 'Bienvenido de nuevo.',
-    });
-    router.push('/');
+    } else {
+        // No lawyer profile exists, and user is not a super-admin.
+        await signOut(auth);
+        toast({
+            title: 'Acceso Denegado',
+            description: 'Este usuario no está registrado como abogado o su registro fue rechazado.',
+            variant: 'destructive',
+        });
+        return;
+    }
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
