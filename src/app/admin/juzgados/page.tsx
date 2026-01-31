@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { mockDependencias, mockCourthouses } from '@/lib/data';
+import { mockDependencias } from '@/lib/data';
 import {
   Table,
   TableBody,
@@ -11,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Trash2, Edit, Search, Loader2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Trash2, Edit, Search, Upload, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,12 +59,13 @@ import {
 } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import Papa from 'papaparse';
 
 export default function AdminCourthousesPage() {
   const { firestore } = useFirebase();
   const courthousesQuery = useMemoFirebase(() => collection(firestore, 'courthouses'), [firestore]);
   const { data: courthouses, isLoading } = useCollection<Courthouse>(courthousesQuery);
-  const [isSeeding, setIsSeeding] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [dependenciaFilter, setDependenciaFilter] = useState('all');
@@ -78,6 +79,8 @@ export default function AdminCourthousesPage() {
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [courthouseIdToDelete, setCourthouseIdToDelete] = useState<string | null>(null);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   const form = useForm<Courthouse>();
   const bulkEditForm = useForm<{ dependencia?: string; fuero?: string; instancia?: string; ciudad?: string; }>();
@@ -265,31 +268,74 @@ export default function AdminCourthousesPage() {
   const handleFindDuplicates = () => {
     setShowDuplicatesOnly(prev => !prev);
   };
-  
-  const handleSeedData = async () => {
-    setIsSeeding(true);
-    const collectionRef = collection(firestore, 'courthouses');
 
-    const promises = mockCourthouses.map(courthouseData => {
-        return addDocumentNonBlocking(collectionRef, courthouseData);
-    });
-
-    try {
-        await Promise.all(promises);
+  const handleProcessImport = () => {
+    if (!importFile) {
         toast({
-            title: "Datos de ejemplo cargados",
-            description: `${mockCourthouses.length} juzgados han sido añadidos a la base de datos.`
+            variant: 'destructive',
+            title: 'Ningún archivo seleccionado',
+            description: 'Por favor, seleccione un archivo CSV para importar.',
         });
-    } catch (error) {
-        console.error("Error seeding data: ", error);
-        toast({
-            title: "Error al cargar datos",
-            description: "No se pudieron cargar los juzgados de ejemplo.",
-            variant: "destructive"
-        });
-    } finally {
-        setIsSeeding(false);
+        return;
     }
+    setIsImporting(true);
+
+    Papa.parse(importFile, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+            const requiredHeaders = ['nombre', 'dependencia', 'ciudad', 'fuero', 'instancia', 'direccion', 'telefono'];
+            const fileHeaders = results.meta.fields || [];
+            const missingHeaders = requiredHeaders.filter(h => !fileHeaders.includes(h));
+
+            if (missingHeaders.length > 0) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Cabeceras de CSV incorrectas',
+                    description: `Faltan las siguientes columnas requeridas: ${missingHeaders.join(', ')}`,
+                });
+                setIsImporting(false);
+                return;
+            }
+
+            const collectionRef = collection(firestore, 'courthouses');
+            const promises = results.data.map(row => {
+                const courthouseData = row as Omit<Courthouse, 'id'>;
+                // Basic validation
+                if (courthouseData.nombre && courthouseData.dependencia && courthouseData.ciudad) {
+                  return addDocumentNonBlocking(collectionRef, courthouseData);
+                }
+                return Promise.resolve(null);
+            });
+            
+            try {
+                await Promise.all(promises);
+                toast({
+                    title: "Importación completada",
+                    description: `${results.data.length} juzgados han sido importados exitosamente.`
+                });
+            } catch (error) {
+                console.error("Error durante la importación: ", error);
+                 toast({
+                    variant: "destructive",
+                    title: "Error en la importación",
+                    description: "Ocurrió un error al guardar los juzgados en la base de datos."
+                });
+            } finally {
+                setIsImporting(false);
+                setShowImportDialog(false);
+                setImportFile(null);
+            }
+        },
+        error: (error) => {
+            toast({
+                variant: 'destructive',
+                title: 'Error al procesar el archivo',
+                description: error.message,
+            });
+            setIsImporting(false);
+        }
+    });
   };
 
   return (
@@ -297,9 +343,9 @@ export default function AdminCourthousesPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">Gestionar Juzgados</h2>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSeedData} disabled={isSeeding}>
-              {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-              Cargar Datos de Ejemplo
+          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Importar CSV
           </Button>
            <Button variant="outline" onClick={handleFindDuplicates}>
             <Search className="mr-2 h-4 w-4" />
@@ -560,6 +606,33 @@ export default function AdminCourthousesPage() {
               <Button type="submit">Aplicar Cambios</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Importar Juzgados desde CSV</DialogTitle>
+            <DialogDescription>
+              Seleccione un archivo CSV para importar. El archivo debe contener las columnas: nombre, dependencia, ciudad, fuero, instancia, direccion, telefono.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <Label htmlFor="csv-file">Archivo CSV</Label>
+            <Input 
+                id="csv-file" 
+                type="file" 
+                accept=".csv"
+                onChange={(e) => setImportFile(e.target.files ? e.target.files[0] : null)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowImportDialog(false)}>Cancelar</Button>
+            <Button onClick={handleProcessImport} disabled={isImporting}>
+                {isImporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isImporting ? 'Importando...' : 'Iniciar Importación'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
