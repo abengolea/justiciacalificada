@@ -29,4 +29,5 @@ export const mockDependencias: Dependencia[] = [
     { id: 26, nombre: 'Justicia Nacional' },
 ];
 
+// This list is intentionally empty. Data should be loaded via the CSV import tool.
 export const mockCourthouses: Omit<Courthouse, 'id'>[] = [];
