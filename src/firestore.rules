@@ -56,7 +56,7 @@ service cloud.firestore {
         data.registrationDate == request.time
       );
 
-      // The special one-time admin bootstrap
+      // The special one-time admin bootstrap for the login flow
       let isAdminBootstrap = (
         data.status == 'approved' &&
         data.role == 'admin' &&
