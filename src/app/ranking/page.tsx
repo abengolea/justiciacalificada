@@ -9,6 +9,8 @@ import { Trophy, Star, ListOrdered, Anchor } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { mockDependencias } from '@/lib/data';
 
 interface CourthouseStats extends Courthouse {
   averageRating: number;
@@ -32,13 +34,13 @@ const RankingCard = ({ title, icon, courthouses, isLoading }: { title: string, i
         <ol className="space-y-4">
           {courthouses.map((courthouse, index) => (
             <li key={courthouse.id} className="flex items-center justify-between gap-4 p-2 rounded-md hover:bg-accent">
-              <div className="flex items-center gap-4">
-                <span className="text-lg font-bold text-muted-foreground w-6 text-center">{index + 1}</span>
-                <div className="flex flex-col">
-                  <Link href={`/juzgados/${courthouse.id}`} className="font-semibold hover:underline">
+              <div className="flex items-center gap-4 overflow-hidden">
+                <span className="text-lg font-bold text-muted-foreground w-6 text-center shrink-0">{index + 1}</span>
+                <div className="flex flex-col overflow-hidden">
+                  <Link href={`/juzgados/${courthouse.id}`} className="font-semibold hover:underline truncate" title={courthouse.nombre}>
                     {courthouse.nombre}
                   </Link>
-                  <p className="text-sm text-muted-foreground">{courthouse.ciudad}, {courthouse.dependencia}</p>
+                  <p className="text-sm text-muted-foreground truncate">{courthouse.ciudad}, {courthouse.dependencia}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -54,7 +56,7 @@ const RankingCard = ({ title, icon, courthouses, isLoading }: { title: string, i
           ))}
         </ol>
       ) : (
-        <p className="text-muted-foreground text-center py-4">No hay suficientes datos para generar este ranking.</p>
+        <p className="text-muted-foreground text-center py-4">No hay suficientes datos para este filtro.</p>
       )}
     </CardContent>
   </Card>
@@ -62,15 +64,34 @@ const RankingCard = ({ title, icon, courthouses, isLoading }: { title: string, i
 
 export default function RankingPage() {
   const { firestore } = useFirebase();
+  const [isClient, setIsClient] = useState(false);
+
+  const [dependenciaFilter, setDependenciaFilter] = useState('all');
+  const [fueroFilter, setFueroFilter] = useState('all');
+  const [instanciaFilter, setInstanciaFilter] = useState('all');
 
   const courthousesQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'courthouses') : null), [firestore]);
   const { data: courthouses, isLoading: isLoadingCourthouses } = useCollection<Courthouse>(courthousesQuery);
 
   const ratingsQuery = useMemoFirebase(() => (firestore ? collectionGroup(firestore, 'ratings') : null), [firestore]);
   const { data: ratings, isLoading: isLoadingRatings } = useCollection<Rating>(ratingsQuery);
-  
-  const [isClient, setIsClient] = useState(false);
+
   useEffect(() => { setIsClient(true) }, []);
+
+  const dependencias = useMemo(() => ['all', ...mockDependencias.map(d => d.nombre).sort()], []);
+  
+  const fueros = useMemo(() => {
+      if (!courthouses) return ['all'];
+      const uniqueFueros = [...new Set(courthouses.map(c => c.fuero).filter(Boolean))];
+      return ['all', ...uniqueFueros.sort()];
+  }, [courthouses]);
+
+  const instancias = useMemo(() => {
+    if (!courthouses) return ['all'];
+    const uniqueInstancias = [...new Set(courthouses.map(c => c.instancia).filter(Boolean))];
+    return ['all', ...uniqueInstancias.sort()];
+}, [courthouses]);
+
 
   const courthouseStats = useMemo((): CourthouseStats[] => {
     if (!courthouses || !ratings) return [];
@@ -78,9 +99,9 @@ export default function RankingPage() {
     const statsMap = new Map<string, { totalScore: number; count: number }>();
     const totalWeight = ratingCategories.reduce((acc, cat) => acc + cat.weight, 0);
 
-    ratings.forEach(rating => {
-      if (rating.status !== 'approved') return;
+    const approvedRatings = ratings.filter(r => r.status === 'approved');
 
+    approvedRatings.forEach(rating => {
       const currentStats = statsMap.get(rating.courthouseId) || { totalScore: 0, count: 0 };
       
       const weightedScore = ratingCategories.reduce((catAcc, cat) => {
@@ -95,7 +116,14 @@ export default function RankingPage() {
       statsMap.set(rating.courthouseId, currentStats);
     });
 
-    return courthouses.map(c => {
+    const filteredCourthouses = courthouses.filter(c => {
+        const dependenciaMatch = dependenciaFilter === 'all' || c.dependencia === dependenciaFilter;
+        const fueroMatch = fueroFilter === 'all' || c.fuero === fueroFilter;
+        const instanciaMatch = instanciaFilter === 'all' || c.instancia === instanciaFilter;
+        return dependenciaMatch && fueroMatch && instanciaMatch;
+    });
+
+    return filteredCourthouses.map(c => {
       const stats = statsMap.get(c.id);
       return {
         ...c,
@@ -103,10 +131,10 @@ export default function RankingPage() {
         ratingCount: stats?.count ?? 0,
       };
     });
-  }, [courthouses, ratings]);
+  }, [courthouses, ratings, dependenciaFilter, fueroFilter, instanciaFilter]);
 
   const topRated = useMemo(() => 
-    [...courthouseStats].sort((a, b) => b.averageRating - a.averageRating).slice(0, 10),
+    [...courthouseStats].filter(c => c.ratingCount > 0).sort((a, b) => b.averageRating - a.averageRating).slice(0, 10),
     [courthouseStats]
   );
   
@@ -119,7 +147,7 @@ export default function RankingPage() {
   );
 
   const mostRated = useMemo(() => 
-    [...courthouseStats].sort((a, b) => b.ratingCount - a.ratingCount).slice(0, 10),
+    [...courthouseStats].filter(c => c.ratingCount > 0).sort((a, b) => b.ratingCount - a.ratingCount).slice(0, 10),
     [courthouseStats]
   );
   
@@ -135,6 +163,51 @@ export default function RankingPage() {
           Descubra los juzgados mejor, peor y más calificados por la comunidad de abogados.
         </p>
       </div>
+
+      <Card className="mb-8">
+        <CardHeader>
+            <CardTitle>Filtros de Ranking</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Select value={dependenciaFilter} onValueChange={setDependenciaFilter}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Filtrar por Dependencia" />
+                </SelectTrigger>
+                <SelectContent>
+                    {dependencias.map((d) => (
+                        <SelectItem key={d} value={d}>
+                            {d === 'all' ? 'Todas las Dependencias' : d}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Select value={fueroFilter} onValueChange={setFueroFilter} disabled={fueros.length <= 1}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Filtrar por Fuero" />
+                </SelectTrigger>
+                <SelectContent>
+                    {fueros.map((f) => (
+                        <SelectItem key={f} value={f}>
+                            {f === 'all' ? 'Todos los Fueros' : f}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Select value={instanciaFilter} onValueChange={setInstanciaFilter} disabled={instancias.length <= 1}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Filtrar por Instancia" />
+                </SelectTrigger>
+                <SelectContent>
+                    {instancias.map((i) => (
+                        <SelectItem key={i} value={i}>
+                            {i === 'all' ? 'Todas las Instancias' : i}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </CardContent>
+      </Card>
+
 
       <div className="space-y-8">
         <RankingCard 
