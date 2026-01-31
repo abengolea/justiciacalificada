@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { mockDependencias } from '@/lib/data';
+import { mockDependencias, mockCourthouses } from '@/lib/data';
 import {
   Table,
   TableBody,
@@ -11,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Trash2, Edit, Search } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Trash2, Edit, Search, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +64,7 @@ export default function AdminCourthousesPage() {
   const { firestore } = useFirebase();
   const courthousesQuery = useMemoFirebase(() => collection(firestore, 'courthouses'), [firestore]);
   const { data: courthouses, isLoading } = useCollection<Courthouse>(courthousesQuery);
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [dependenciaFilter, setDependenciaFilter] = useState('all');
@@ -264,12 +265,44 @@ export default function AdminCourthousesPage() {
   const handleFindDuplicates = () => {
     setShowDuplicatesOnly(prev => !prev);
   };
+  
+  const handleSeedData = async () => {
+    setIsSeeding(true);
+    const collectionRef = collection(firestore, 'courthouses');
+
+    const promises = mockCourthouses.map(courthouseData => {
+        return addDocumentNonBlocking(collectionRef, courthouseData);
+    });
+
+    try {
+        await Promise.all(promises);
+        toast({
+            title: "Datos de ejemplo cargados",
+            description: `${mockCourthouses.length} juzgados han sido añadidos a la base de datos.`
+        });
+    } catch (error) {
+        console.error("Error seeding data: ", error);
+        toast({
+            title: "Error al cargar datos",
+            description: "No se pudieron cargar los juzgados de ejemplo.",
+            variant: "destructive"
+        });
+    } finally {
+        setIsSeeding(false);
+    }
+  };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">Gestionar Juzgados</h2>
         <div className="flex gap-2">
+          {!isLoading && courthouses && courthouses.length === 0 && (
+            <Button variant="outline" onClick={handleSeedData} disabled={isSeeding}>
+                {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                Cargar Datos de Ejemplo
+            </Button>
+          )}
            <Button variant="outline" onClick={handleFindDuplicates}>
             <Search className="mr-2 h-4 w-4" />
             {showDuplicatesOnly ? "Mostrar Todos" : "Buscar Repetidos"}
