@@ -44,17 +44,21 @@ export function useDoc<T = any>(
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [internalIsLoading, setInternalIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!memoizedDocRef) {
-      // If the ref is not ready, maintain the loading state.
-      // This prevents a flash of "no data" and fixes hydration mismatches.
+      setInternalIsLoading(true);
       return;
     }
 
-    setIsLoading(true);
+    setInternalIsLoading(true);
     setError(null);
     
     const unsubscribe = onSnapshot(
@@ -67,9 +71,9 @@ export function useDoc<T = any>(
           setData(null);
         }
         setError(null); // Clear any previous error on successful snapshot (even if doc doesn't exist)
-        setIsLoading(false);
+        setInternalIsLoading(false);
       },
-      (error: FirestoreError) => {
+      (err: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
           operation: 'get',
           path: memoizedDocRef.path,
@@ -77,7 +81,7 @@ export function useDoc<T = any>(
 
         setError(contextualError)
         setData(null)
-        setIsLoading(false)
+        setInternalIsLoading(false)
 
         // trigger global error propagation
         errorEmitter.emit('permission-error', contextualError);
@@ -85,7 +89,9 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef]); // Re-run if the memoizedDocRef changes.
+  }, [memoizedDocRef]);
+
+  const isLoading = !isMounted || internalIsLoading;
 
   return { data, isLoading, error };
 }

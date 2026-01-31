@@ -59,19 +59,21 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [internalIsLoading, setInternalIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!memoizedTargetRefOrQuery) {
-      // If the query/ref is not ready, maintain the loading state.
-      // This prevents a flash of "no data" and fixes hydration mismatches
-      // where the server has no query but the client does after initialization.
+      setInternalIsLoading(true);
       return;
     }
 
-    // We have a query, so proceed with subscribing.
-    setIsLoading(true);
+    setInternalIsLoading(true);
     setError(null);
 
     const unsubscribe = onSnapshot(
@@ -83,20 +85,17 @@ export function useCollection<T = any>(
         }
         setData(results);
         setError(null);
-        setIsLoading(false);
+        setInternalIsLoading(false);
       },
-      (error: FirestoreError) => {
-        // This logic extracts the path from either a ref or a query
+      (err: FirestoreError) => {
         let path: string;
         const internalQuery = memoizedTargetRefOrQuery as unknown as InternalQuery;
 
         if (memoizedTargetRefOrQuery.type === 'collection') {
             path = (memoizedTargetRefOrQuery as CollectionReference).path;
         } else if (internalQuery._query.collectionGroup) {
-            // It's a collectionGroup query. Path is not well-defined, so use the group id.
             path = `(collectionGroup: ${internalQuery._query.collectionGroup})`;
         } else {
-            // It's a collection query.
             path = internalQuery._query.path.toString();
         }
 
@@ -107,17 +106,20 @@ export function useCollection<T = any>(
 
         setError(contextualError)
         setData(null)
-        setIsLoading(false)
+        setInternalIsLoading(false)
 
-        // trigger global error propagation
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
+  }, [memoizedTargetRefOrQuery]);
+  
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
   }
+
+  const isLoading = !isMounted || internalIsLoading;
+
   return { data, isLoading, error };
 }
