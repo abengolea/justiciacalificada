@@ -18,6 +18,9 @@ import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
 import { collection, collectionGroup } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
+import { useAdminStatus } from "@/hooks/use-admin-status";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function CourthouseList() {
   const [isClient, setIsClient] = useState(false);
@@ -33,6 +36,8 @@ export default function CourthouseList() {
 
   const ratingsQuery = useMemoFirebase(() => (firestore ? collectionGroup(firestore, 'ratings') : null), [firestore]);
   const { data: ratings, isLoading: isLoadingRatings } = useCollection<Rating>(ratingsQuery);
+
+  const { isAdmin, isLoading: isLoadingAdmin } = useAdminStatus();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [dependenciaFilter, setDependenciaFilter] = useState("all");
@@ -128,7 +133,7 @@ export default function CourthouseList() {
   }, [courthouses, searchTerm, dependenciaFilter, fueroFilter, sortBy, ratingStats]);
 
 
-  const isLoading = isLoadingCourthouses || isLoadingRatings;
+  const isLoading = isLoadingCourthouses || isLoadingRatings || isLoadingAdmin;
   const showLoading = !isClient || isLoading;
 
   const isAnyFilterActive = searchTerm !== '' || dependenciaFilter !== 'all' || fueroFilter !== 'all';
@@ -210,6 +215,16 @@ export default function CourthouseList() {
                 <p className="text-muted-foreground">
                     No se encontraron juzgados que coincidan con su búsqueda.
                 </p>
+             ) : isAdmin ? (
+                <div className="flex flex-col items-center gap-4">
+                  <p className="text-muted-foreground">Aún no hay juzgados en la base de datos.</p>
+                  <p className="text-sm text-muted-foreground">Como administrador, puedes cargarlos desde el panel de gestión.</p>
+                  <Button asChild>
+                      <Link href="/admin/juzgados">
+                          Ir a Gestionar Juzgados
+                      </Link>
+                  </Button>
+                </div>
              ) : (
                 <p className="text-muted-foreground">
                     Aún no hay juzgados en la base de datos.
