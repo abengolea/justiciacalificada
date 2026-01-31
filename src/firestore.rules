@@ -43,6 +43,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
+      // Check for the role in the user's own profile document.
       return isSignedIn() && get(/databases/$(database)/documents/lawyers/$(request.auth.uid)).data.role == 'admin';
     }
 
@@ -128,14 +129,20 @@ service cloud.firestore {
       match /ratings/{ratingId} {
         allow get, list: if true;
         allow create: if isValidNewRating(courthouseId);
-        allow update: if isOwner(resource.data.lawyerId) && isExistingDoc() && areRatingFieldsImmutable();
-        allow delete: if isOwner(resource.data.lawyerId) && isExistingDoc();
+        allow update: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc() && areRatingFieldsImmutable();
+        allow delete: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc();
       }
 
       match /statistics/{statisticId} {
         allow get, list: if true;
         allow create, update, delete: if false;
       }
+    }
+
+    // This rule allows the collection group query for 'ratings' to work.
+    // It's needed for the main courthouse list page to calculate average ratings.
+    match /{path=**}/ratings/{ratingId} {
+      allow get, list: if true;
     }
 
     match /mail/{mailId} {

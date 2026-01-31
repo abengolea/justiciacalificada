@@ -43,21 +43,35 @@ service cloud.firestore {
     }
 
     function isAdmin() {
+      // Check for the role in the user's own profile document.
       return isSignedIn() && get(/databases/$(database)/documents/lawyers/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isValidNewLawyer(uid) {
       let data = request.resource.data;
-      return (data.uid == uid &&
-             data.status == 'pending' &&
-             data.role == 'user' &&
+      
+      // A regular lawyer registration
+      let isNormalRegistration = (
+        data.status == 'pending' &&
+        data.role == 'user' &&
+        data.registrationDate == request.time
+      );
+
+      // The special one-time admin bootstrap for the login flow
+      let isAdminBootstrap = (
+        data.status == 'approved' &&
+        data.role == 'admin' &&
+        data.email == 'abengolea1@gmail.com'
+      );
+
+      return data.uid == uid &&
              data.nombre is string && data.nombre.size() > 0 &&
              data.apellido is string && data.apellido.size() > 0 &&
              data.email is string && data.email.matches('.+@.+\\..+') &&
-             data.matricula is string && data.matricula.size() > 0 &&
+             data.matricula is string &&
              data.fechaMatriculacion is string &&
              data.credencialUrl is string &&
-             data.registrationDate == request.time) || (isAdmin() && data.uid == uid); // Admins can create profiles, including their own
+             (isNormalRegistration || isAdminBootstrap);
     }
 
     function isValidLawyerUpdate(uid) {
@@ -115,14 +129,20 @@ service cloud.firestore {
       match /ratings/{ratingId} {
         allow get, list: if true;
         allow create: if isValidNewRating(courthouseId);
-        allow update: if isOwner(resource.data.lawyerId) && isExistingDoc() && areRatingFieldsImmutable();
-        allow delete: if isOwner(resource.data.lawyerId) && isExistingDoc();
+        allow update: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc() && areRatingFieldsImmutable();
+        allow delete: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc();
       }
 
       match /statistics/{statisticId} {
         allow get, list: if true;
         allow create, update, delete: if false;
       }
+    }
+
+    // This rule allows the collection group query for 'ratings' to work.
+    // It's needed for the main courthouse list page to calculate average ratings.
+    match /{path=**}/ratings/{ratingId} {
+      allow get, list: if true;
     }
 
     match /mail/{mailId} {
