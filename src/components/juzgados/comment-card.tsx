@@ -1,8 +1,10 @@
+
 import { Star, Calendar } from "lucide-react";
 import type { Rating } from "@/lib/types";
 import { ratingCategories } from "@/lib/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { Timestamp } from "firebase/firestore";
 
 interface CommentCardProps {
   rating: Rating;
@@ -15,6 +17,13 @@ export function CommentCard({ rating }: CommentCardProps) {
       return acc + (score * cat.weight);
   }, 0);
   const overallScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
+
+  const getRatingDate = () => {
+    if (rating.fechaCalificacion instanceof Timestamp) {
+      return rating.fechaCalificacion.toDate();
+    }
+    return new Date(rating.fechaCalificacion);
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -45,7 +54,7 @@ export function CommentCard({ rating }: CommentCardProps) {
       <p className="text-foreground/90">{rating.comentario}</p>
       <p className="text-xs text-muted-foreground">
         Calificado el{" "}
-        {format(new Date(rating.fechaCalificacion), "dd 'de' MMMM, yyyy", {
+        {format(getRatingDate(), "dd 'de' MMMM, yyyy", {
           locale: es,
         })}
       </p>

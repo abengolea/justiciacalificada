@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -32,7 +33,7 @@ import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useFirebase, useUser, addDocumentNonBlocking } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, serverTimestamp } from "firebase/firestore";
 
 
 const formSchema = z.object({
@@ -130,7 +131,7 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
       courthouseId: courthouseId, 
       lawyerId: user.uid,
       ...values,
-      fechaCalificacion: new Date().toISOString(),
+      fechaCalificacion: serverTimestamp(),
       fechaExperiencia: values.fechaExperiencia.toISOString(),
       status: 'pending' as const,
     };

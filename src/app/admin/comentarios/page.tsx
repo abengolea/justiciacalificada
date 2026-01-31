@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -22,6 +23,7 @@ import {
 import { useCollection, useFirebase, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, collectionGroup, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Timestamp } from 'firebase/firestore';
 
 export default function AdminCommentsPage() {
   const { firestore } = useFirebase();
@@ -73,6 +75,13 @@ export default function AdminCommentsPage() {
 
   const getCourthouseName = (id: string) => courthouseMap.get(id) ?? 'Juzgado no encontrado';
   const getUserName = (id: string) => lawyerMap.get(id) ?? 'Usuario anónimo';
+
+  const getRatingDate = (rating: Rating) => {
+    if (rating.fechaCalificacion instanceof Timestamp) {
+      return rating.fechaCalificacion.toDate();
+    }
+    return new Date(rating.fechaCalificacion);
+  }
   
   const statusBadgeVariant = {
       pending: 'secondary',
@@ -101,7 +110,7 @@ export default function AdminCommentsPage() {
                         <CardTitle className="text-lg">{getCourthouseName(rating.courthouseId)}</CardTitle>
                         <CardDescription>
                             Por: {getUserName(rating.lawyerId)} - Calificado el: {' '}
-                            {format(new Date(rating.fechaCalificacion), "dd 'de' MMMM, yyyy", {
+                            {format(getRatingDate(rating), "dd 'de' MMMM, yyyy", {
                                 locale: es,
                             })}
                         </CardDescription>

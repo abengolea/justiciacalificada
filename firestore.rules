@@ -43,8 +43,11 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Check for the role in the user's own profile document.
       return isSignedIn() && get(/databases/$(database)/documents/lawyers/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isApprovedLawyer() {
+      return isSignedIn() && get(/databases/$(database)/documents/lawyers/$(request.auth.uid)).data.status == 'approved';
     }
 
     function isValidNewLawyer(uid) {
@@ -98,9 +101,24 @@ service cloud.firestore {
 
     function isValidNewRating(courthouseId) {
       let data = request.resource.data;
-      return isSignedIn() &&
-             data.lawyerId == request.auth.uid &&
-             data.courthouseId == courthouseId;
+       let hasValidPuntuaciones = data.puntuaciones.calidadResoluciones >= 0 && data.puntuaciones.calidadResoluciones <= 10 &&
+                             data.puntuaciones.rapidezResoluciones >= 0 && data.puntuaciones.rapidezResoluciones <= 10 &&
+                             data.puntuaciones.rapidezDespacho >= 0 && data.puntuaciones.rapidezDespacho <= 10 &&
+                             data.puntuaciones.atencionMesaEntradas >= 0 && data.puntuaciones.atencionMesaEntradas <= 10 &&
+                             data.puntuaciones.tratoProfesional >= 0 && data.puntuaciones.tratoProfesional <= 10 &&
+                             data.puntuaciones.puntualidadAudiencias >= 0 && data.puntuaciones.puntualidadAudiencias <= 10 &&
+                             data.puntuaciones.ordenGeneral >= 0 && data.puntuaciones.ordenGeneral <= 10 &&
+                             data.puntuaciones.tecnologia >= 0 && data.puntuaciones.tecnologia <= 10 &&
+                             data.puntuaciones.practicidad >= 0 && data.puntuaciones.practicidad <= 10 &&
+                             data.puntuaciones.capacitacionPersonal >= 0 && data.puntuaciones.capacitacionPersonal <= 10;
+      
+      return isOwner(data.lawyerId) &&
+             data.courthouseId == courthouseId &&
+             data.status == 'pending' &&
+             data.fechaCalificacion is timestamp &&
+             data.comentario is string && data.comentario.size() >= 10 && data.comentario.size() <= 500 &&
+             data.fechaExperiencia is string &&
+             hasValidPuntuaciones;
     }
 
     function areRatingFieldsImmutable() {
@@ -128,7 +146,7 @@ service cloud.firestore {
 
       match /ratings/{ratingId} {
         allow get, list: if true;
-        allow create: if isValidNewRating(courthouseId);
+        allow create: if isApprovedLawyer() && isValidNewRating(courthouseId);
         allow update: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc() && areRatingFieldsImmutable();
         allow delete: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc();
       }
