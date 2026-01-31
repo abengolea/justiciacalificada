@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -63,7 +64,10 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const fiveYearsAgo = new Date();
 fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
 
-const baseFormSchema = z.object({
+const MAX_FILE_SIZE = 5000000; // 5MB
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
+const formSchema = z.object({
   nombre: z.string().min(2, { message: 'El nombre es requerido.' }),
   apellido: z.string().min(2, { message: 'El apellido es requerido.' }),
   matricula: z
@@ -81,6 +85,14 @@ const baseFormSchema = z.object({
     .max(fiveYearsAgo, {
       message: 'Debe tener al menos 5 años de matriculación.',
     }),
+  credencial: z
+    .any()
+    .refine((files) => files?.length == 1, "La imagen de la credencial es requerida.")
+    .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE, `El tamaño máximo es 5MB.`)
+    .refine(
+      (files) => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
+      ".jpg, .jpeg, .png y .webp son los únicos formatos aceptados."
+    ),
 });
 
 export default function RegisterPage() {
@@ -89,19 +101,21 @@ export default function RegisterPage() {
   const { auth, firestore, storage } = useFirebase();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setGoogleLoading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   
-  const form = useForm<z.infer<typeof baseFormSchema>>({
-    resolver: zodResolver(baseFormSchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       nombre: '',
       apellido: '',
       matricula: '',
       email: '',
       password: '',
+      credencial: undefined,
     },
   });
 
-  async function onSubmit(values: z.infer<typeof baseFormSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     if (!values.password) {
       form.setError("password", { type: "manual", message: "La contraseña es requerida." });
@@ -116,17 +130,14 @@ export default function RegisterPage() {
     
     let user: User | null = null;
     try {
-      console.log("Paso 1: Creando usuario...");
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
       user = userCredential.user;
-      console.log("Paso 1 completado. UID:", user.uid);
 
-      console.log("Paso 2: Subiendo credencial (deshabilitado temporalmente)");
-      const credencialUrl = ""; // Valor temporal
-      console.log("Paso 2 completado.");
+      const file = values.credencial[0] as File;
+      const storageRef = ref(storage, `credenciales/${user.uid}/${file.name}`);
+      const uploadTask = await uploadBytes(storageRef, file);
+      const credencialUrl = await getDownloadURL(uploadTask.ref);
 
-
-      console.log("Paso 3: Creando documento de abogado en Firestore...");
       const lawyerData = {
         uid: user.uid,
         nombre: values.nombre,
@@ -141,11 +152,9 @@ export default function RegisterPage() {
       };
       const lawyerDocRef = doc(firestore, "lawyers", user.uid);
       await setDoc(lawyerDocRef, lawyerData);
-      console.log("Paso 3 completado.");
       
       const mailCollectionRef = collection(firestore, "mail");
       
-      console.log("Paso 4: Enviando correos de notificación...");
       const adminMailData = {
         to: ['justiciacalificada@gmail.com'],
         message: {
@@ -176,7 +185,6 @@ export default function RegisterPage() {
         }
       }
       addDocumentNonBlocking(mailCollectionRef, userMailData);
-      console.log("Paso 4 completado.");
       
       toast({
         title: 'Registro Enviado',
@@ -185,10 +193,12 @@ export default function RegisterPage() {
         variant: 'default',
       });
       form.reset();
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
 
     } catch (error: any) {
       if (user) {
-        console.log("Error durante el registro, eliminando usuario parcial:", user.uid);
         await user.delete().catch(deleteError => {
           console.error("Fallo al limpiar usuario parcialmente creado:", deleteError);
         });
@@ -210,18 +220,17 @@ export default function RegisterPage() {
         variant: 'destructive',
       });
     } finally {
-      console.log("Proceso finalizado, limpiando estado de carga.");
       setIsLoading(false);
     }
   }
   
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
-    const isValid = await form.trigger(['nombre', 'apellido', 'matricula', 'fechaMatriculacion', 'email']);
+    const isValid = await form.trigger(['nombre', 'apellido', 'matricula', 'fechaMatriculacion', 'email', 'credencial']);
     if (!isValid) {
         toast({
             title: "Formulario incompleto",
-            description: "Por favor, complete todos los campos requeridos (excepto contraseña y credencial) antes de registrarse con Google.",
+            description: "Por favor, complete todos los campos requeridos, incluyendo la credencial, antes de registrarse con Google.",
             variant: "destructive",
         });
         setGoogleLoading(false);
@@ -260,7 +269,10 @@ export default function RegisterPage() {
             return;
         }
         
-        const credencialUrl = ""; // Valor temporal
+        const file = values.credencial[0] as File;
+        const storageRef = ref(storage, `credenciales/${user.uid}/${file.name}`);
+        const uploadTask = await uploadBytes(storageRef, file);
+        const credencialUrl = await getDownloadURL(uploadTask.ref);
 
         const lawyerData = {
             uid: user.uid,
@@ -298,6 +310,9 @@ export default function RegisterPage() {
             variant: 'default',
         });
         form.reset();
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
     } catch (error: any) {
         console.error("Error de registro con Google:", error);
         
@@ -307,11 +322,13 @@ export default function RegisterPage() {
             });
         }
 
-        toast({
-            title: "Error de registro con Google",
-            description: error.message || "No se pudo completar el registro. Inténtalo de nuevo.",
-            variant: "destructive",
-        });
+        if (error.code !== 'auth/popup-closed-by-user') {
+            toast({
+                title: "Error de registro con Google",
+                description: error.message || "No se pudo completar el registro. Inténtalo de nuevo.",
+                variant: "destructive",
+            });
+        }
     } finally {
         setGoogleLoading(false);
     }
@@ -454,6 +471,25 @@ export default function RegisterPage() {
                   </FormItem>
                 )}
               />
+               <FormField
+                control={form.control}
+                name="credencial"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Imagen de Credencial</FormLabel>
+                    <FormControl>
+                       <Input 
+                        type="file" 
+                        accept="image/png, image/jpeg, image/webp"
+                        disabled={isLoading || isGoogleLoading}
+                        ref={fileInputRef}
+                        onChange={(e) => field.onChange(e.target.files)}
+                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
                <div className="relative my-2">
                 <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
@@ -488,3 +524,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+

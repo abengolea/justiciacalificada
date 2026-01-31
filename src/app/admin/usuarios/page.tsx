@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -10,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Check, Trash2, X } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Check, Trash2, X, ExternalLink } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +20,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { User } from '@/lib/types';
+import { Lawyer as User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -138,6 +139,7 @@ export default function AdminUsersPage() {
               <TableHead>Nombre</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Matrícula</TableHead>
+              <TableHead>Credencial</TableHead>
               <TableHead>Rol</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
@@ -148,7 +150,7 @@ export default function AdminUsersPage() {
               <>
                 {[...Array(5)].map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={7}>
                       <Skeleton className="h-8 w-full" />
                     </TableCell>
                   </TableRow>
@@ -162,6 +164,17 @@ export default function AdminUsersPage() {
                 </TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>{user.matricula}</TableCell>
+                <TableCell>
+                  {user.credencialUrl && user.credencialUrl !== 'N/A' ? (
+                    <Button asChild variant="outline" size="sm">
+                       <a href={user.credencialUrl} target="_blank" rel="noopener noreferrer">
+                          Ver <ExternalLink className="ml-2 h-3 w-3" />
+                       </a>
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No provista</span>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                     {user.role}
@@ -213,7 +226,7 @@ export default function AdminUsersPage() {
             ))}
             {!isLoading && (!users || users.length === 0) && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-24">
+                <TableCell colSpan={7} className="text-center h-24">
                   No se encontraron usuarios.
                 </TableCell>
               </TableRow>

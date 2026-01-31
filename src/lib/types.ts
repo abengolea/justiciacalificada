@@ -1,3 +1,4 @@
+
 export interface Courthouse {
   id: string;
   nombre: string;
@@ -34,7 +35,7 @@ export interface Rating {
   puntuaciones: RatingCategories;
   comentario: string;
   fechaExperiencia: string; // ISO date string
-  fechaCalificacion: string; // ISO date string
+  fechaCalificacion: any; // Can be a server timestamp
   status: 'pending' | 'approved' | 'rejected';
 }
 
