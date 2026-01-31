@@ -214,14 +214,27 @@ export default function AdminCourthousesPage() {
 
   const handleBulkDelete = () => {
     const count = selectedRows.length;
+    const batch = writeBatch(firestore);
     selectedRows.forEach(id => {
-        deleteDocumentNonBlocking(doc(firestore, 'courthouses', id));
+      const docRef = doc(firestore, 'courthouses', id);
+      batch.delete(docRef);
     });
-    setSelectedRows([]);
-    toast({
-      title: `${count} juzgado(s) eliminado(s)`,
-      description: 'Los juzgados seleccionados han sido eliminados.',
+
+    batch.commit().then(() => {
+      setSelectedRows([]);
+      toast({
+        title: `${count} juzgado(s) eliminado(s)`,
+        description: 'Los juzgados seleccionados han sido eliminados.',
+      });
+    }).catch(error => {
+      console.error("Error al eliminar en bloque:", error);
+      toast({
+        variant: "destructive",
+        title: "Error de eliminación",
+        description: "No se pudieron eliminar los juzgados seleccionados.",
+      });
     });
+    
     setShowBulkDeleteConfirm(false);
   }
 
@@ -251,18 +264,28 @@ export default function AdminCourthousesPage() {
         return;
     }
 
+    const batch = writeBatch(firestore);
     selectedRows.forEach(id => {
-      updateDocumentNonBlocking(doc(firestore, 'courthouses', id), updates);
+      const docRef = doc(firestore, 'courthouses', id);
+      batch.update(docRef, updates);
     });
 
-    toast({
-        title: 'Actualización en bloque exitosa',
-        description: `${selectedRows.length} juzgados han sido modificados.`,
+    batch.commit().then(() => {
+       toast({
+          title: 'Actualización en bloque exitosa',
+          description: `${selectedRows.length} juzgados han sido modificados.`,
+      });
+      setShowBulkEditDialog(false);
+      bulkEditForm.reset();
+      setSelectedRows([]);
+    }).catch(error => {
+      console.error("Error al actualizar en bloque:", error);
+      toast({
+        variant: "destructive",
+        title: "Error de actualización",
+        description: "No se pudieron actualizar los juzgados seleccionados.",
+      });
     });
-
-    setShowBulkEditDialog(false);
-    bulkEditForm.reset();
-    setSelectedRows([]);
   };
 
   const handleFindDuplicates = () => {
@@ -276,7 +299,8 @@ export default function AdminCourthousesPage() {
     setIsImporting(true);
     toast({
         title: "Iniciando importación...",
-        description: "Por favor espere mientras se procesa el archivo CSV.",
+        description: "Por favor espere mientras se procesa el archivo CSV. Esto puede tardar varios minutos para archivos grandes.",
+        duration: 5000,
     });
 
     Papa.parse(file, {
@@ -299,19 +323,17 @@ export default function AdminCourthousesPage() {
             }
 
             const courthousesData = results.data as any[];
+            let successfulImports = 0;
+            const batchSize = 499; // Firestore allows a maximum of 500 operations in a single batch.
 
             try {
-                const collectionRef = collection(firestore, 'courthouses');
-                const batchSize = 499; // Firestore allows a maximum of 500 operations in a single batch.
-                let successfulImports = 0;
-
                 for (let i = 0; i < courthousesData.length; i += batchSize) {
                     const batch = writeBatch(firestore);
                     const chunk = courthousesData.slice(i, i + batchSize);
                     
                     chunk.forEach(courthouse => {
                         if (courthouse.nombre && courthouse.nombre.trim() !== '') {
-                            const docRef = doc(collectionRef); // Firestore will generate an ID
+                            const docRef = doc(collection(firestore, 'courthouses')); // Firestore will generate an ID
                             const newCourthouse = {
                                 nombre: courthouse.nombre || '',
                                 dependencia: courthouse.dependencia || '',
@@ -331,12 +353,14 @@ export default function AdminCourthousesPage() {
                     toast({
                         title: "Importando...",
                         description: `Se han procesado ${i + chunk.length} de ${courthousesData.length} filas.`,
+                        duration: 3000,
                     });
                 }
                 
                 toast({
                     title: "Importación completada",
-                    description: `Se han añadido ${successfulImports} juzgados a la base de datos.`,
+                    description: `Se han añadido ${successfulImports} juzgados a la base de datos. La página se actualizará.`,
+                    duration: 5000,
                 });
 
             } catch (error) {
@@ -345,6 +369,7 @@ export default function AdminCourthousesPage() {
                     variant: "destructive",
                     title: "Error de importación",
                     description: "Ocurrió un error al guardar los juzgados. Consulte la consola para más detalles.",
+                    duration: 10000,
                 });
             } finally {
                 setIsImporting(false);
@@ -359,6 +384,7 @@ export default function AdminCourthousesPage() {
                 variant: "destructive",
                 title: "Error de archivo",
                 description: "No se pudo leer el archivo CSV. Verifique el formato.",
+                duration: 10000,
             });
             setIsImporting(false);
         }
