@@ -297,12 +297,10 @@ export default function AdminCourthousesPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">Gestionar Juzgados</h2>
         <div className="flex gap-2">
-          {!isLoading && courthouses && (
-            <Button variant="outline" onClick={handleSeedData} disabled={isSeeding}>
-                {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                Cargar Datos de Ejemplo
-            </Button>
-          )}
+          <Button variant="outline" onClick={handleSeedData} disabled={isSeeding}>
+              {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+              Cargar Datos de Ejemplo
+          </Button>
            <Button variant="outline" onClick={handleFindDuplicates}>
             <Search className="mr-2 h-4 w-4" />
             {showDuplicatesOnly ? "Mostrar Todos" : "Buscar Repetidos"}
