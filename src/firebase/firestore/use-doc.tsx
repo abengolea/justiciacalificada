@@ -49,9 +49,8 @@ export function useDoc<T = any>(
 
   useEffect(() => {
     if (!memoizedDocRef) {
-      setData(null);
-      setIsLoading(false);
-      setError(null);
+      // If the ref is not ready, maintain the loading state.
+      // This prevents a flash of "no data" and fixes hydration mismatches.
       return;
     }
 

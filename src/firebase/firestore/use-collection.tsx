@@ -64,12 +64,13 @@ export function useCollection<T = any>(
 
   useEffect(() => {
     if (!memoizedTargetRefOrQuery) {
-      setData(null);
-      setIsLoading(false);
-      setError(null);
+      // If the query/ref is not ready, maintain the loading state.
+      // This prevents a flash of "no data" and fixes hydration mismatches
+      // where the server has no query but the client does after initialization.
       return;
     }
 
+    // We have a query, so proceed with subscribing.
     setIsLoading(true);
     setError(null);
 
