@@ -44,21 +44,17 @@ export function useDoc<T = any>(
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [internalIsLoading, setInternalIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!memoizedDocRef) {
-      setInternalIsLoading(true);
+      setIsLoading(true);
+      setData(null);
       return;
     }
 
-    setInternalIsLoading(true);
+    setIsLoading(true);
     setError(null);
     
     const unsubscribe = onSnapshot(
@@ -71,7 +67,7 @@ export function useDoc<T = any>(
           setData(null);
         }
         setError(null); // Clear any previous error on successful snapshot (even if doc doesn't exist)
-        setInternalIsLoading(false);
+        setIsLoading(false);
       },
       (err: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
@@ -81,7 +77,7 @@ export function useDoc<T = any>(
 
         setError(contextualError)
         setData(null)
-        setInternalIsLoading(false)
+        setIsLoading(false)
 
         // trigger global error propagation
         errorEmitter.emit('permission-error', contextualError);
@@ -90,8 +86,6 @@ export function useDoc<T = any>(
 
     return () => unsubscribe();
   }, [memoizedDocRef]);
-
-  const isLoading = !isMounted || internalIsLoading;
 
   return { data, isLoading, error };
 }
