@@ -12,7 +12,7 @@ import {
 import { CourthouseCard } from "./courthouse-card";
 import type { Courthouse, Rating } from "@/lib/types";
 import { ratingCategories } from "@/lib/types";
-import { Search } from "lucide-react";
+import { Search, SortAsc } from "lucide-react";
 import { mockDependencias } from "@/lib/data";
 import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
 import { collection, collectionGroup } from "firebase/firestore";
@@ -37,6 +37,7 @@ export default function CourthouseList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dependenciaFilter, setDependenciaFilter] = useState("all");
   const [fueroFilter, setFueroFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("rating-desc"); // Default sort
 
   const dependencias = useMemo(
     () => ["all", ...mockDependencias.map((p) => p.nombre).sort()],
@@ -47,37 +48,6 @@ export default function CourthouseList() {
     () => ["all", ...Array.from(new Set((courthouses || []).map((c) => c.fuero))).sort()],
     [courthouses]
   );
-
-  const filteredCourthouses = useMemo(() => {
-    if (!courthouses) return [];
-    const searchWords = searchTerm.toLowerCase().split(' ').filter(Boolean);
-
-    return courthouses.filter((courthouse) => {
-      const dependenciaMatch =
-        dependenciaFilter === "all" || courthouse.dependencia === dependenciaFilter;
-      const fueroMatch = fueroFilter === "all" || courthouse.fuero === fueroFilter;
-
-      if (!dependenciaMatch || !fueroMatch) {
-        return false;
-      }
-      
-      if (searchWords.length === 0) {
-        return true;
-      }
-
-      const courthouseText = [
-        courthouse.nombre,
-        courthouse.ciudad,
-        courthouse.dependencia,
-        courthouse.fuero,
-        courthouse.instancia,
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return searchWords.every((word) => courthouseText.includes(word));
-    });
-  }, [courthouses, searchTerm, dependenciaFilter, fueroFilter]);
 
   const ratingStats = useMemo(() => {
     const stats = new Map<string, { totalScore: number; count: number }>();
@@ -113,18 +83,65 @@ export default function CourthouseList() {
   const getRatingCount = (courthouseId: string) => {
       return ratingStats.get(courthouseId)?.count ?? 0;
   }
+  
+  const processedCourthouses = useMemo(() => {
+    if (!courthouses) return [];
+
+    let filtered = courthouses.filter((courthouse) => {
+        const searchWords = searchTerm.toLowerCase().split(' ').filter(Boolean);
+        const dependenciaMatch = dependenciaFilter === "all" || courthouse.dependencia === dependenciaFilter;
+        const fueroMatch = fueroFilter === "all" || courthouse.fuero === fueroFilter;
+
+        if (!dependenciaMatch || !fueroMatch) {
+            return false;
+        }
+      
+        if (searchWords.length === 0) {
+            return true;
+        }
+
+        const courthouseText = [
+            courthouse.nombre,
+            courthouse.ciudad,
+            courthouse.dependencia,
+            courthouse.fuero,
+            courthouse.instancia,
+        ].join(" ").toLowerCase();
+
+        return searchWords.every((word) => courthouseText.includes(word));
+    });
+
+    // Now, sort the filtered results
+    return filtered.sort((a, b) => {
+        switch (sortBy) {
+            case 'rating-desc':
+                return getAverageRating(b.id) - getAverageRating(a.id);
+            case 'name-asc':
+                return a.nombre.localeCompare(b.nombre);
+            case 'ratings-count-desc':
+                return getRatingCount(b.id) - getRatingCount(a.id);
+            default:
+                return 0;
+        }
+    });
+
+  }, [courthouses, searchTerm, dependenciaFilter, fueroFilter, sortBy, ratingStats]);
+
 
   const isLoading = isLoadingCourthouses || isLoadingRatings;
   const showLoading = !isClient || isLoading;
 
+  const isAnyFilterActive = searchTerm !== '' || dependenciaFilter !== 'all' || fueroFilter !== 'all';
+
+
   return (
     <div>
-      <div className="mb-6 p-4 bg-card rounded-lg shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mb-6 p-4 bg-card rounded-lg border">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="relative md:col-span-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre, ciudad, fuero..."
+              placeholder="Buscar por nombre, ciudad..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -154,6 +171,19 @@ export default function CourthouseList() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger>
+              <div className="flex items-center gap-2">
+                <SortAsc className="h-4 w-4 text-muted-foreground" />
+                <SelectValue placeholder="Ordenar por" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="rating-desc">Mejor Calificados</SelectItem>
+              <SelectItem value="name-asc">Nombre (A-Z)</SelectItem>
+              <SelectItem value="ratings-count-desc">Más Calificados</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -165,8 +195,8 @@ export default function CourthouseList() {
               <CardFooter><Skeleton className="h-8 w-full" /></CardFooter>
             </Card>
           ))
-        ) : filteredCourthouses.length > 0 ? (
-          filteredCourthouses.map((courthouse) => (
+        ) : processedCourthouses.length > 0 ? (
+          processedCourthouses.map((courthouse) => (
             <CourthouseCard
               key={courthouse.id}
               courthouse={courthouse}
@@ -175,9 +205,18 @@ export default function CourthouseList() {
             />
           ))
         ) : (
-          <p className="col-span-full text-center text-muted-foreground py-10">
-            No se encontraron juzgados que coincidan con su búsqueda.
-          </p>
+          <div className="col-span-full text-center py-10">
+            { isAnyFilterActive ? (
+                <p className="text-muted-foreground">
+                    No se encontraron juzgados que coincidan con su búsqueda.
+                </p>
+             ) : (
+                <p className="text-muted-foreground">
+                    Aún no hay juzgados en la base de datos.
+                </p>
+             )
+            }
+          </div>
         )}
       </div>
     </div>
