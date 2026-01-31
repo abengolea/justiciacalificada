@@ -73,65 +73,52 @@
       ]
     },
     "Courthouse": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Courthouse",
       "type": "object",
       "description": "Represents a courthouse in Argentina.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the courthouse."
-        },
-        "name": {
+        "nombre": {
           "type": "string",
           "description": "Name of the courthouse."
         },
-        "province": {
+        "dependencia": {
           "type": "string",
-          "description": "Province where the courthouse is located."
+          "description": "Province or jurisdiction where the courthouse is located."
         },
-        "city": {
+        "ciudad": {
           "type": "string",
           "description": "City where the courthouse is located."
         },
-        "legalArea": {
+        "fuero": {
           "type": "string",
           "description": "Legal area of the courthouse (e.g., Civil, Penal, Laboral)."
         },
-        "level": {
+        "instancia": {
           "type": "string",
           "description": "Level of the courthouse (e.g., First Instance, Cámara)."
         },
-        "address": {
+        "direccion": {
           "type": "string",
           "description": "Address of the courthouse."
         },
-        "phone": {
+        "telefono": {
           "type": "string",
           "description": "Phone number of the courthouse."
         }
       },
       "required": [
-        "id",
-        "name",
-        "province",
-        "city",
-        "legalArea",
-        "level",
-        "address",
-        "phone"
+        "nombre",
+        "dependencia",
+        "ciudad",
+        "fuero",
+        "instancia"
       ]
     },
     "Rating": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Rating",
       "type": "object",
       "description": "Represents a rating given to a courthouse by a lawyer.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the rating."
-        },
         "courthouseId": {
           "type": "string",
           "description": "Reference to Courthouse. (Relationship: Courthouse 1:N Rating)"
@@ -140,53 +127,61 @@
           "type": "string",
           "description": "Reference to Lawyer. (Relationship: Lawyer 1:N Rating)"
         },
-        "efficiency": {
-          "type": "number",
-          "description": "Rating for procedural efficiency."
+        "puntuaciones": {
+          "type": "object",
+          "properties": {
+            "calidadResoluciones": { "type": "number" },
+            "rapidezResoluciones": { "type": "number" },
+            "rapidezDespacho": { "type": "number" },
+            "atencionMesaEntradas": { "type": "number" },
+            "tratoProfesional": { "type": "number" },
+            "puntualidadAudiencias": { "type": "number" },
+            "ordenGeneral": { "type": "number" },
+            "tecnologia": { "type": "number" },
+            "practicidad": { "type": "number" },
+            "capacitacionPersonal": { "type": "number" }
+          },
+          "required": [
+            "calidadResoluciones",
+            "rapidezResoluciones",
+            "rapidezDespacho",
+            "atencionMesaEntradas",
+            "tratoProfesional",
+            "puntualidadAudiencias",
+            "ordenGeneral",
+            "tecnologia",
+            "practicidad",
+            "capacitacionPersonal"
+          ]
         },
-        "resolutionTime": {
-          "type": "number",
-          "description": "Rating for resolution time."
-        },
-        "professionalAttention": {
-          "type": "number",
-          "description": "Rating for attention to professionals."
-        },
-        "administrativeOrganization": {
-          "type": "number",
-          "description": "Rating for administrative organization."
-        },
-        "accessibility": {
-          "type": "number",
-          "description": "Rating for accessibility."
-        },
-        "comment": {
+        "comentario": {
           "type": "string",
           "description": "Anonymous comment about the courthouse."
         },
-        "experienceDate": {
+        "fechaExperiencia": {
           "type": "string",
           "description": "Date of the lawyer's experience at the courthouse.",
           "format": "date-time"
         },
-        "ratingDate": {
+        "fechaCalificacion": {
           "type": "string",
           "description": "Date and time when the rating was submitted.",
           "format": "date-time"
+        },
+        "status": {
+            "type": "string",
+            "description": "Moderation status of the rating.",
+            "enum": ["pending", "approved", "rejected"]
         }
       },
       "required": [
-        "id",
         "courthouseId",
         "lawyerId",
-        "efficiency",
-        "resolutionTime",
-        "professionalAttention",
-        "administrativeOrganization",
-        "accessibility",
-        "comment",
-        "experienceDate",
-        "ratingDate"
+        "puntuaciones",
+        "comentario",
+        "fechaExperiencia",
+        "fechaCalificacion",
+        "status"
       ]
     },
     "Statistic": {

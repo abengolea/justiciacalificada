@@ -80,6 +80,7 @@ export default function AdminCommentsPage() {
     if (rating.fechaCalificacion instanceof Timestamp) {
       return rating.fechaCalificacion.toDate();
     }
+    // Fallback for string dates, though Timestamps are expected from Firestore
     return new Date(rating.fechaCalificacion);
   }
   

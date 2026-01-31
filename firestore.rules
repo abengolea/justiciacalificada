@@ -115,7 +115,7 @@ service cloud.firestore {
       return isOwner(data.lawyerId) &&
              data.courthouseId == courthouseId &&
              data.status == 'pending' &&
-             data.fechaCalificacion is timestamp &&
+             data.fechaCalificacion == request.time &&
              data.comentario is string && data.comentario.size() >= 10 && data.comentario.size() <= 500 &&
              data.fechaExperiencia is string &&
              hasValidPuntuaciones;
