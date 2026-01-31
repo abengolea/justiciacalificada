@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { mockDependencias, mockCourthouses } from '@/lib/data';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { mockDependencias } from '@/lib/data';
 import {
   Table,
   TableBody,
@@ -59,12 +59,15 @@ import {
 } from '@/firebase';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import Papa from 'papaparse';
 
 export default function AdminCourthousesPage() {
   const { firestore } = useFirebase();
   const courthousesQuery = useMemoFirebase(() => collection(firestore, 'courthouses'), [firestore]);
   const { data: courthouses, isLoading } = useCollection<Courthouse>(courthousesQuery);
-  const [isSeeding, setIsSeeding] = useState(false);
+  
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [dependenciaFilter, setDependenciaFilter] = useState('all');
@@ -266,33 +269,100 @@ export default function AdminCourthousesPage() {
     setShowDuplicatesOnly(prev => !prev);
   };
 
-  const handleSeedDatabase = async () => {
-    setIsSeeding(true);
-    try {
-        const collectionRef = collection(firestore, 'courthouses');
-        const batch = writeBatch(firestore);
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-        mockCourthouses.forEach(courthouseData => {
-            const docRef = doc(collectionRef); // Create a new doc with a random ID
-            batch.set(docRef, courthouseData);
-        });
+    setIsImporting(true);
+    toast({
+        title: "Iniciando importación...",
+        description: "Por favor espere mientras se procesa el archivo CSV.",
+    });
 
-        await batch.commit();
+    Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+            const requiredHeaders = ['nombre', 'dependencia', 'ciudad', 'fuero', 'instancia', 'direccion', 'telefono'];
+            const fileHeaders = results.meta.fields || [];
+            const missingHeaders = requiredHeaders.filter(h => !fileHeaders.includes(h));
 
-        toast({
-            title: "Carga completada",
-            description: `${mockCourthouses.length} juzgados han sido cargados en la base de datos.`
-        });
-    } catch (error) {
-        console.error("Error durante la carga de datos:", error);
-        toast({
-            variant: "destructive",
-            title: "Error en la carga",
-            description: "Ocurrió un error al guardar los juzgados en la base de datos."
-        });
-    } finally {
-        setIsSeeding(false);
-    }
+            if (missingHeaders.length > 0) {
+                toast({
+                    variant: "destructive",
+                    title: "Error en el archivo CSV",
+                    description: `Faltan las siguientes columnas obligatorias: ${missingHeaders.join(', ')}`,
+                    duration: 10000,
+                });
+                setIsImporting(false);
+                return;
+            }
+
+            const courthousesData = results.data as any[];
+
+            try {
+                const collectionRef = collection(firestore, 'courthouses');
+                const batchSize = 499; // Firestore allows a maximum of 500 operations in a single batch.
+                let successfulImports = 0;
+
+                for (let i = 0; i < courthousesData.length; i += batchSize) {
+                    const batch = writeBatch(firestore);
+                    const chunk = courthousesData.slice(i, i + batchSize);
+                    
+                    chunk.forEach(courthouse => {
+                        if (courthouse.nombre && courthouse.nombre.trim() !== '') {
+                            const docRef = doc(collectionRef); // Firestore will generate an ID
+                            const newCourthouse = {
+                                nombre: courthouse.nombre || '',
+                                dependencia: courthouse.dependencia || '',
+                                ciudad: courthouse.ciudad || '',
+                                fuero: courthouse.fuero || '',
+                                instancia: courthouse.instancia || '',
+                                direccion: courthouse.direccion || '',
+                                telefono: courthouse.telefono || '',
+                            };
+                            batch.set(docRef, newCourthouse);
+                            successfulImports++;
+                        }
+                    });
+                    
+                    await batch.commit();
+                    
+                    toast({
+                        title: "Importando...",
+                        description: `Se han procesado ${i + chunk.length} de ${courthousesData.length} filas.`,
+                    });
+                }
+                
+                toast({
+                    title: "Importación completada",
+                    description: `Se han añadido ${successfulImports} juzgados a la base de datos.`,
+                });
+
+            } catch (error) {
+                console.error("Error al importar juzgados:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error de importación",
+                    description: "Ocurrió un error al guardar los juzgados. Consulte la consola para más detalles.",
+                });
+            } finally {
+                setIsImporting(false);
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = ""; // Reset file input
+                }
+            }
+        },
+        error: (error: any) => {
+            console.error("Error al parsear CSV:", error);
+            toast({
+                variant: "destructive",
+                title: "Error de archivo",
+                description: "No se pudo leer el archivo CSV. Verifique el formato.",
+            });
+            setIsImporting(false);
+        }
+    });
   };
 
 
@@ -301,10 +371,17 @@ export default function AdminCourthousesPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">Gestionar Juzgados</h2>
         <div className="flex gap-2">
-           <Button variant="outline" onClick={handleSeedDatabase} disabled={isSeeding}>
-              {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-              {isSeeding ? 'Cargando...' : 'Cargar Juzgados desde Archivo'}
-          </Button>
+           <Button onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+              {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+              {isImporting ? 'Importando...' : 'Importar desde CSV'}
+           </Button>
+           <Input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileImport} 
+              className="hidden" 
+              accept=".csv"
+           />
            <Button variant="outline" onClick={handleFindDuplicates}>
             <Search className="mr-2 h-4 w-4" />
             {showDuplicatesOnly ? "Mostrar Todos" : "Buscar Repetidos"}
@@ -435,7 +512,7 @@ export default function AdminCourthousesPage() {
              {!isLoading && filteredCourthouses.length === 0 && (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
-                        No se encontraron resultados. Utilice el botón "Cargar Juzgados desde Archivo" para poblar la base de datos.
+                        No se encontraron resultados. Utilice el botón "Importar desde CSV" para poblar la base de datos.
                     </TableCell>
                 </TableRow>
             )}
