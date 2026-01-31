@@ -45,12 +45,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
 
     if (!user) {
-      router.replace('/login'); // If not loading and no user, redirect.
+      router.replace('/login'); // If not loading and no user, redirect immediately.
       return;
     }
 
     const checkAdminStatus = async () => {
-      setIsCheckingAdmin(true);
+      // No need to set isCheckingAdmin to true here, it's true by default
       try {
         const lawyerRef = doc(firestore, 'lawyers', user.uid);
         const lawyerDoc = await getDoc(lawyerRef);
@@ -59,12 +59,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           setIsAdmin(true);
         } else {
           setIsAdmin(false);
-          router.replace('/'); // If not an admin, redirect to home page
         }
       } catch (error) {
         console.error("Error checking admin status:", error);
         setIsAdmin(false);
-        router.replace('/');
       } finally {
         setIsCheckingAdmin(false);
       }
@@ -72,6 +70,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
     checkAdminStatus();
   }, [user, isUserLoading, router, firestore]);
+
+  // This effect handles redirection *after* the admin check is complete.
+  useEffect(() => {
+    if (!isCheckingAdmin && !isAdmin) {
+      router.replace('/');
+    }
+  }, [isCheckingAdmin, isAdmin, router]);
 
   if (isUserLoading || isCheckingAdmin) {
     return (
@@ -81,14 +86,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     );
   }
 
+  // Only render children if the check is complete and the user is an admin.
+  // Otherwise, the effect above will handle the redirect.
   if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <h1 className="text-2xl font-bold">Acceso Denegado</h1>
-        <p>No tiene permisos para acceder a esta página.</p>
-        <Link href="/" passHref>
-           <Button variant="link">Volver al inicio</Button>
-        </Link>
+     return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <p>Redirigiendo...</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary ml-2" />
       </div>
     );
   }
