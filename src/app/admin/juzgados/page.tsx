@@ -477,7 +477,7 @@ export default function AdminCourthousesPage() {
              {!isLoading && filteredCourthouses.length === 0 && (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
-                        No se encontraron resultados.
+                        No se encontraron resultados. Utilice el botón "Importar CSV" para cargar juzgados.
                     </TableCell>
                 </TableRow>
             )}
