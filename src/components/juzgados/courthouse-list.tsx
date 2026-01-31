@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -20,12 +20,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 
 export default function CourthouseList() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const { firestore } = useFirebase();
 
-  const courthousesQuery = useMemoFirebase(() => collection(firestore, 'courthouses'), [firestore]);
+  const courthousesQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'courthouses') : null), [firestore]);
   const { data: courthouses, isLoading: isLoadingCourthouses } = useCollection<Courthouse>(courthousesQuery);
 
-  const ratingsQuery = useMemoFirebase(() => collectionGroup(firestore, 'ratings'), [firestore]);
+  const ratingsQuery = useMemoFirebase(() => (firestore ? collectionGroup(firestore, 'ratings') : null), [firestore]);
   const { data: ratings, isLoading: isLoadingRatings } = useCollection<Rating>(ratingsQuery);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -109,6 +115,7 @@ export default function CourthouseList() {
   }
 
   const isLoading = isLoadingCourthouses || isLoadingRatings;
+  const showLoading = !isClient || isLoading;
 
   return (
     <div>
@@ -150,7 +157,7 @@ export default function CourthouseList() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {isLoading ? (
+        {showLoading ? (
           [...Array(6)].map((_, i) => (
             <Card key={i}>
               <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
