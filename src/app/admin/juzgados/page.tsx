@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Trash2, Edit, Search, Upload, Loader2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Trash2, Edit, Search, Upload, Loader2, Database } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,7 +59,7 @@ import {
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import Papa from 'papaparse';
-import { mockDependencias } from '@/lib/data';
+import { mockDependencias, mockCourthouses } from '@/lib/data';
 
 export default function AdminCourthousesPage() {
   const { firestore } = useFirebase();
@@ -67,6 +67,7 @@ export default function AdminCourthousesPage() {
   const { data: courthouses, isLoading } = useCollection<Courthouse>(courthousesQuery);
   
   const [isImporting, setIsImporting] = useState(false);
+  const [isMockLoading, setIsMockLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -350,6 +351,49 @@ export default function AdminCourthousesPage() {
         }
     });
   };
+  
+  const handleLoadMockData = async () => {
+    if (courthouses && courthouses.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Base de datos no vacía",
+        description: "Para cargar datos de prueba, primero elimine los juzgados existentes para evitar duplicados.",
+      });
+      return;
+    }
+
+    setIsMockLoading(true);
+    toast({
+      title: "Cargando datos de prueba...",
+      description: `Se añadirán ${mockCourthouses.length} juzgados. Por favor espere.`,
+    });
+
+    try {
+      const batchSize = 499;
+      for (let i = 0; i < mockCourthouses.length; i += batchSize) {
+        const batch = writeBatch(firestore);
+        const chunk = mockCourthouses.slice(i, i + batchSize);
+        chunk.forEach(courthouse => {
+          const docRef = doc(collection(firestore, 'courthouses'));
+          batch.set(docRef, courthouse);
+        });
+        await batch.commit();
+      }
+      toast({
+        title: "Carga completada",
+        description: `Se han añadido ${mockCourthouses.length} juzgados de prueba.`,
+      });
+    } catch (error) {
+      console.error("Error al cargar datos de prueba:", error);
+      toast({
+        variant: "destructive",
+        title: "Error en la carga",
+        description: "No se pudieron cargar los datos de prueba. Consulte la consola.",
+      });
+    } finally {
+      setIsMockLoading(false);
+    }
+  };
 
 
   return (
@@ -357,7 +401,7 @@ export default function AdminCourthousesPage() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">Gestionar Juzgados</h2>
         <div className="flex gap-2">
-           <Button onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+           <Button onClick={() => fileInputRef.current?.click()} disabled={isImporting || isMockLoading}>
               {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
               {isImporting ? 'Importando...' : 'Importar desde CSV'}
            </Button>
@@ -368,7 +412,11 @@ export default function AdminCourthousesPage() {
               className="hidden" 
               accept=".csv"
            />
-          <Button onClick={handleCreate}>
+            <Button onClick={handleLoadMockData} disabled={isImporting || isMockLoading} variant="outline">
+              {isMockLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
+              {isMockLoading ? 'Cargando...' : 'Cargar Juzgados de Prueba'}
+           </Button>
+          <Button onClick={handleCreate} disabled={isImporting || isMockLoading}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Crear Juzgado
           </Button>
