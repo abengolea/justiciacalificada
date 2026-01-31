@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useCollection, useFirebase, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirebase, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { collection, collectionGroup, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Timestamp } from 'firebase/firestore';
@@ -39,7 +39,7 @@ export default function AdminCommentsPage() {
   const { data: lawyers, isLoading: isLoadingLawyers } = useCollection<Lawyer>(lawyersQuery);
 
   const courthouseMap = useMemo(() => new Map(courthouses?.map(c => [c.id, c.nombre])), [courthouses]);
-  const lawyerMap = useMemo(() => new Map(lawyers?.map(l => [l.id, `${l.nombre} ${l.apellido}`])), [lawyers]);
+  const lawyerMap = useMemo(() => new Map(lawyers?.map(l => [l.id, l])), [lawyers]);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [ratingToDelete, setRatingToDelete] = useState<Rating | null>(null);
@@ -49,9 +49,30 @@ export default function AdminCommentsPage() {
   const handleUpdateStatus = (rating: Rating, status: 'approved' | 'rejected') => {
     const ratingDocRef = doc(firestore, 'courthouses', rating.courthouseId, 'ratings', rating.id);
     updateDocumentNonBlocking(ratingDocRef, { status });
+
+    const lawyer = lawyerMap.get(rating.lawyerId);
+    const courthouseName = courthouseMap.get(rating.courthouseId) ?? 'un juzgado';
+
+    if (lawyer && lawyer.email) {
+      const mailCollectionRef = collection(firestore, "mail");
+      const mailData = {
+        to: [lawyer.email],
+        message: {
+          subject: `Su comentario en Justicia Calificada ha sido ${status === 'approved' ? 'aprobado' : 'rechazado'}`,
+          html: `
+            <p>Hola ${lawyer.nombre},</p>
+            <p>Le informamos que su comentario sobre <strong>${courthouseName}</strong> ha sido <strong>${status === 'approved' ? 'APROBADO' : 'RECHAZADO'}</strong>.</p>
+            ${status === 'approved' ? '<p>Su comentario ya es visible para toda la comunidad. ¡Gracias por su contribución!</p>' : '<p>Si cree que esto es un error o que su comentario cumplía con nuestras normas, por favor póngase en contacto con nosotros.</p>'}
+            <p>Atentamente,<br>El equipo de Justicia Calificada</p>
+          `,
+        },
+      };
+      addDocumentNonBlocking(mailCollectionRef, mailData);
+    }
+    
     toast({
       title: 'Comentario actualizado',
-      description: `El comentario ha sido ${status === 'approved' ? 'aprobado' : 'rechazado'}.`,
+      description: `El comentario ha sido ${status === 'approved' ? 'aprobado' : 'rechazado'}. Se envió una notificación al usuario.`,
     });
   };
   
@@ -74,7 +95,10 @@ export default function AdminCommentsPage() {
   };
 
   const getCourthouseName = (id: string) => courthouseMap.get(id) ?? 'Juzgado no encontrado';
-  const getUserName = (id: string) => lawyerMap.get(id) ?? 'Usuario anónimo';
+  const getUserName = (id: string) => {
+      const lawyer = lawyerMap.get(id);
+      return lawyer ? `${lawyer.nombre} ${lawyer.apellido}` : 'Usuario anónimo';
+  };
 
   const getRatingDate = (rating: Rating) => {
     if (rating.fechaCalificacion instanceof Timestamp) {
