@@ -299,8 +299,17 @@ export default function AdminCourthousesPage() {
             }
 
             const collectionRef = collection(firestore, 'courthouses');
-            const promises = results.data.map(row => {
-                const courthouseData = row as Omit<Courthouse, 'id'>;
+            const promises = (results.data as Partial<Courthouse>[]).map(row => {
+                const courthouseData: Partial<Courthouse> = {
+                    nombre: row.nombre || '',
+                    dependencia: row.dependencia || '',
+                    ciudad: row.ciudad || '',
+                    fuero: row.fuero || '',
+                    instancia: row.instancia || '',
+                    direccion: row.direccion || '',
+                    telefono: row.telefono || '',
+                };
+                
                 // Basic validation
                 if (courthouseData.nombre && courthouseData.dependencia && courthouseData.ciudad) {
                   return addDocumentNonBlocking(collectionRef, courthouseData);
