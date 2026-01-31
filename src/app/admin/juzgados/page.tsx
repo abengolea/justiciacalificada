@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { mockDependencias } from '@/lib/data';
 import {
   Table,
   TableBody,
@@ -60,6 +59,7 @@ import {
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import Papa from 'papaparse';
+import { mockDependencias } from '@/lib/data';
 
 export default function AdminCourthousesPage() {
   const { firestore } = useFirebase();
@@ -74,7 +74,6 @@ export default function AdminCourthousesPage() {
   const [fueroFilter, setFueroFilter] = useState('all');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [editingCourthouse, setEditingCourthouse] = useState<Partial<Courthouse> | null>(null);
-  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   const { toast } = useToast();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -100,25 +99,12 @@ export default function AdminCourthousesPage() {
     () => ['all', ...Array.from(new Set((courthouses || []).map((c) => c.fuero))).sort()],
     [courthouses]
   );
-  
-  const normalizeForDuplicateCheck = (text: string) => {
-    if (!text) return '';
-    return text
-      .toLowerCase()
-      .trim()
-      .replace(/\s+en\s+lo\s+/g, ' ') // Remove " en lo "
-      // eslint-disable-next-line no-irregular-whitespace
-      .replace(/n°|nº|nâ°|no\./g, 'n') // Standardize number abbreviations
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
-      .replace(/[^a-z0-9\s]/gi, '')   // Remove all non-alphanumeric characters (except spaces)
-      .replace(/\s\s+/g, ' ');       // Collapse whitespace
-  };
 
   const filteredCourthouses = useMemo(() => {
     if (!courthouses) return [];
     const searchWords = searchTerm.toLowerCase().split(' ').filter(Boolean);
 
-    let displayCourthouses = courthouses.filter((courthouse) => {
+    return courthouses.filter((courthouse) => {
       const dependenciaMatch =
         dependenciaFilter === 'all' || courthouse.dependencia === dependenciaFilter;
       const fueroMatch = fueroFilter === 'all' || courthouse.fuero === fueroFilter;
@@ -143,29 +129,7 @@ export default function AdminCourthousesPage() {
 
       return searchWords.every((word) => courthouseText.includes(word));
     });
-
-    if (showDuplicatesOnly) {
-      const nameAndCityCounts = displayCourthouses.reduce((acc, c) => {
-        const key = `${normalizeForDuplicateCheck(c.nombre)}|${normalizeForDuplicateCheck(c.ciudad)}`;
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      
-      const duplicateKeys = Object.keys(nameAndCityCounts).filter(key => nameAndCityCounts[key] > 1);
-
-      displayCourthouses = displayCourthouses.filter(c => {
-        const key = `${normalizeForDuplicateCheck(c.nombre)}|${normalizeForDuplicateCheck(c.ciudad)}`;
-        return duplicateKeys.includes(key);
-      }).sort((a, b) => {
-        const keyA = `${normalizeForDuplicateCheck(a.nombre)}|${normalizeForDuplicateCheck(a.ciudad)}`;
-        const keyB = `${normalizeForDuplicateCheck(b.nombre)}|${normalizeForDuplicateCheck(b.ciudad)}`;
-        return keyA.localeCompare(keyB);
-      });
-    }
-
-    return displayCourthouses;
-
-  }, [courthouses, searchTerm, dependenciaFilter, fueroFilter, showDuplicatesOnly]);
+  }, [courthouses, searchTerm, dependenciaFilter, fueroFilter]);
 
   const handleSelectAll = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
@@ -288,10 +252,6 @@ export default function AdminCourthousesPage() {
     });
   };
 
-  const handleFindDuplicates = () => {
-    setShowDuplicatesOnly(prev => !prev);
-  };
-
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -408,10 +368,6 @@ export default function AdminCourthousesPage() {
               className="hidden" 
               accept=".csv"
            />
-           <Button variant="outline" onClick={handleFindDuplicates}>
-            <Search className="mr-2 h-4 w-4" />
-            {showDuplicatesOnly ? "Mostrar Todos" : "Buscar Repetidos"}
-          </Button>
           <Button onClick={handleCreate}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Crear Juzgado
