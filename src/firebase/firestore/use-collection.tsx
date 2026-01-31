@@ -59,7 +59,7 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -73,7 +73,6 @@ export function useCollection<T = any>(
     setIsLoading(true);
     setError(null);
 
-    // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
@@ -97,7 +96,7 @@ export function useCollection<T = any>(
             path = `(collectionGroup: ${internalQuery._query.collectionGroup})`;
         } else {
             // It's a collection query.
-            path = internalQuery._query.path.canonicalString()
+            path = internalQuery._query.path.toString();
         }
 
         const contextualError = new FirestorePermissionError({
