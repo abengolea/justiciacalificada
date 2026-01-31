@@ -17,6 +17,7 @@ import { mockDependencias } from "@/lib/data";
 import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
 import { collection, collectionGroup } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 
 export default function CourthouseList() {
   const { firestore } = useFirebase();
