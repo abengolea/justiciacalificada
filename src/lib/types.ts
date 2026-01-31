@@ -29,8 +29,8 @@ export interface RatingCategories {
 
 export interface Rating {
   id: string;
-  juzgadoId: string;
-  usuarioId: string; // Hashed for anonymity
+  courthouseId: string;
+  lawyerId: string;
   puntuaciones: RatingCategories;
   comentario: string;
   fechaExperiencia: string; // ISO date string
@@ -55,12 +55,16 @@ export const ratingCategories: {
     { key: "capacitacionPersonal", label: "Capacitación del personal", weight: 1 },
 ];
 
-export interface User {
-  id: string;
+export interface Lawyer {
+  id: string; // This will be the Firestore document ID (same as UID)
+  uid: string;
   nombre: string;
   apellido: string;
   email: string;
   matricula: string;
+  fechaMatriculacion: string; // ISO date string
+  credencialUrl: string;
   role: 'admin' | 'user';
   status: 'pending' | 'approved' | 'rejected';
+  registrationDate: any; // Can be a server timestamp
 }

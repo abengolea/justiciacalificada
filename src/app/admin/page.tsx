@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Card,
   CardContent,
@@ -6,14 +8,30 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Gavel, Users, MessageSquare } from 'lucide-react';
-import { mockCourthouses, mockRatings, mockUsers } from '@/lib/data';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, collectionGroup } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Courthouse, Lawyer, Rating } from '@/lib/types';
 
 export default function AdminDashboard() {
-  const totalCourthouses = mockCourthouses.length;
-  const totalUsers = mockUsers.length;
-  const totalRatings = mockRatings.length;
+  const { firestore } = useFirebase();
+
+  const courthousesQuery = useMemoFirebase(() => collection(firestore, 'courthouses'), [firestore]);
+  const { data: courthouses, isLoading: isLoadingCourthouses } = useCollection<Courthouse>(courthousesQuery);
+
+  const usersQuery = useMemoFirebase(() => collection(firestore, 'lawyers'), [firestore]);
+  const { data: users, isLoading: isLoadingUsers } = useCollection<Lawyer>(usersQuery);
+
+  const ratingsQuery = useMemoFirebase(() => collectionGroup(firestore, 'ratings'), [firestore]);
+  const { data: ratings, isLoading: isLoadingRatings } = useCollection<Rating>(ratingsQuery);
+
+  const totalCourthouses = courthouses?.length ?? 0;
+  const totalUsers = users?.length ?? 0;
+  const totalRatings = ratings?.length ?? 0;
+
+  const isLoading = isLoadingCourthouses || isLoadingUsers || isLoadingRatings;
 
   return (
     <div className="space-y-6">
@@ -26,7 +44,7 @@ export default function AdminDashboard() {
             <Gavel className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCourthouses}</div>
+            {isLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{totalCourthouses}</div>}
             <p className="text-xs text-muted-foreground">
               Juzgados en la base de datos
             </p>
@@ -38,7 +56,7 @@ export default function AdminDashboard() {
             <Users className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalUsers}</div>
+            {isLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{totalUsers}</div>}
              <p className="text-xs text-muted-foreground">
               Usuarios en la plataforma
             </p>
@@ -50,7 +68,7 @@ export default function AdminDashboard() {
             <MessageSquare className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalRatings}</div>
+             {isLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{totalRatings}</div>}
             <p className="text-xs text-muted-foreground">
               Comentarios y calificaciones de usuarios
             </p>

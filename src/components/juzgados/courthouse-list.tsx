@@ -14,16 +14,19 @@ import type { Courthouse, Rating } from "@/lib/types";
 import { ratingCategories } from "@/lib/types";
 import { Search } from "lucide-react";
 import { mockDependencias } from "@/lib/data";
+import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
+import { collection, collectionGroup } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface CourthouseListProps {
-  courthouses: Courthouse[];
-  ratings: Rating[];
-}
+export default function CourthouseList() {
+  const { firestore } = useFirebase();
 
-export default function CourthouseList({
-  courthouses,
-  ratings,
-}: CourthouseListProps) {
+  const courthousesQuery = useMemoFirebase(() => collection(firestore, 'courthouses'), [firestore]);
+  const { data: courthouses, isLoading: isLoadingCourthouses } = useCollection<Courthouse>(courthousesQuery);
+
+  const ratingsQuery = useMemoFirebase(() => collectionGroup(firestore, 'ratings'), [firestore]);
+  const { data: ratings, isLoading: isLoadingRatings } = useCollection<Rating>(ratingsQuery);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [dependenciaFilter, setDependenciaFilter] = useState("all");
   const [fueroFilter, setFueroFilter] = useState("all");
@@ -32,12 +35,14 @@ export default function CourthouseList({
     () => ["all", ...mockDependencias.map((p) => p.nombre).sort()],
     []
   );
+
   const fueros = useMemo(
-    () => ["all", ...Array.from(new Set(courthouses.map((c) => c.fuero))).sort()],
+    () => ["all", ...Array.from(new Set((courthouses || []).map((c) => c.fuero))).sort()],
     [courthouses]
   );
 
   const filteredCourthouses = useMemo(() => {
+    if (!courthouses) return [];
     const searchWords = searchTerm.toLowerCase().split(' ').filter(Boolean);
 
     return courthouses.filter((courthouse) => {
@@ -67,26 +72,42 @@ export default function CourthouseList({
     });
   }, [courthouses, searchTerm, dependenciaFilter, fueroFilter]);
 
-  const getAverageRating = (juzgadoId: string) => {
-    const relevantRatings = ratings.filter((r) => r.juzgadoId === juzgadoId && r.status === 'approved');
-    if (relevantRatings.length === 0) return 0;
-    
+  const ratingStats = useMemo(() => {
+    const stats = new Map<string, { totalScore: number; count: number }>();
+    if (!ratings) return stats;
+
     const totalWeight = ratingCategories.reduce((acc, cat) => acc + cat.weight, 0);
 
-    const totalScore = relevantRatings.reduce((acc, r) => {
+    ratings.forEach(rating => {
+      if (rating.status !== 'approved') return;
+
+      const currentStats = stats.get(rating.courthouseId) || { totalScore: 0, count: 0 };
+      
       const weightedScore = ratingCategories.reduce((catAcc, cat) => {
-        const score = r.puntuaciones[cat.key] || 0;
+        const score = rating.puntuaciones[cat.key] || 0;
         return catAcc + (score * cat.weight);
       }, 0);
-      return acc + (totalWeight > 0 ? weightedScore / totalWeight : 0);
-    }, 0);
+      
+      const averageScore = totalWeight > 0 ? weightedScore / totalWeight : 0;
+      
+      currentStats.totalScore += averageScore;
+      currentStats.count += 1;
+      stats.set(rating.courthouseId, currentStats);
+    });
+    return stats;
+  }, [ratings]);
 
-    return totalScore / relevantRatings.length;
+  const getAverageRating = (courthouseId: string) => {
+    const stats = ratingStats.get(courthouseId);
+    if (!stats || stats.count === 0) return 0;
+    return stats.totalScore / stats.count;
   };
 
-  const getRatingCount = (juzgadoId: string) => {
-      return ratings.filter(r => r.juzgadoId === juzgadoId && r.status === 'approved').length;
+  const getRatingCount = (courthouseId: string) => {
+      return ratingStats.get(courthouseId)?.count ?? 0;
   }
+
+  const isLoading = isLoadingCourthouses || isLoadingRatings;
 
   return (
     <div>
@@ -128,7 +149,15 @@ export default function CourthouseList({
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCourthouses.length > 0 ? (
+        {isLoading ? (
+          [...Array(6)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+              <CardContent><Skeleton className="h-4 w-1/2" /></CardContent>
+              <CardFooter><Skeleton className="h-8 w-full" /></CardFooter>
+            </Card>
+          ))
+        ) : filteredCourthouses.length > 0 ? (
           filteredCourthouses.map((courthouse) => (
             <CourthouseCard
               key={courthouse.id}

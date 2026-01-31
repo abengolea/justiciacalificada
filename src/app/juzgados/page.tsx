@@ -1,4 +1,3 @@
-import { mockCourthouses, mockRatings } from "@/lib/data";
 import CourthouseList from "@/components/juzgados/courthouse-list";
 
 export default function JuzgadosPage() {
@@ -13,7 +12,7 @@ export default function JuzgadosPage() {
           Argentina.
         </p>
       </div>
-      <CourthouseList courthouses={mockCourthouses} ratings={mockRatings} />
+      <CourthouseList />
     </div>
   );
 }

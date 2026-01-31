@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { mockRatings, mockCourthouses, mockUsers } from '@/lib/data';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Trash2, X } from 'lucide-react';
-import { Rating } from '@/lib/types';
+import { Rating, Courthouse, Lawyer } from '@/lib/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
@@ -20,47 +19,60 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-
+import { useCollection, useFirebase, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, collectionGroup, doc } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AdminCommentsPage() {
-  const [ratings, setRatings] = useState<Rating[]>(mockRatings);
+  const { firestore } = useFirebase();
   const { toast } = useToast();
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [ratingIdToDelete, setRatingIdToDelete] = useState<string | null>(null);
 
-  const handleUpdateStatus = (id: string, status: 'approved' | 'rejected') => {
-    setRatings(ratings.map((r) => r.id === id ? { ...r, status } : r));
+  const ratingsQuery = useMemoFirebase(() => collectionGroup(firestore, 'ratings'), [firestore]);
+  const { data: ratings, isLoading: isLoadingRatings } = useCollection<Rating>(ratingsQuery);
+
+  const courthousesQuery = useMemoFirebase(() => collection(firestore, 'courthouses'), [firestore]);
+  const { data: courthouses, isLoading: isLoadingCourthouses } = useCollection<Courthouse>(courthousesQuery);
+
+  const lawyersQuery = useMemoFirebase(() => collection(firestore, 'lawyers'), [firestore]);
+  const { data: lawyers, isLoading: isLoadingLawyers } = useCollection<Lawyer>(lawyersQuery);
+
+  const courthouseMap = useMemo(() => new Map(courthouses?.map(c => [c.id, c.nombre])), [courthouses]);
+  const lawyerMap = useMemo(() => new Map(lawyers?.map(l => [l.id, `${l.nombre} ${l.apellido}`])), [lawyers]);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [ratingToDelete, setRatingToDelete] = useState<Rating | null>(null);
+  
+  const isLoading = isLoadingRatings || isLoadingCourthouses || isLoadingLawyers;
+
+  const handleUpdateStatus = (rating: Rating, status: 'approved' | 'rejected') => {
+    const ratingDocRef = doc(firestore, 'courthouses', rating.courthouseId, 'ratings', rating.id);
+    updateDocumentNonBlocking(ratingDocRef, { status });
     toast({
       title: 'Comentario actualizado',
       description: `El comentario ha sido ${status === 'approved' ? 'aprobado' : 'rechazado'}.`,
     });
   };
   
-  const handleDeleteRequest = (id: string) => {
-    setRatingIdToDelete(id);
+  const handleDeleteRequest = (rating: Rating) => {
+    setRatingToDelete(rating);
     setShowDeleteConfirm(true);
   };
   
   const handleDelete = () => {
-    if (!ratingIdToDelete) return;
+    if (!ratingToDelete) return;
+    const ratingDocRef = doc(firestore, 'courthouses', ratingToDelete.courthouseId, 'ratings', ratingToDelete.id);
+    deleteDocumentNonBlocking(ratingDocRef);
     
-    setRatings((prev) => prev.filter((r) => r.id !== ratingIdToDelete));
     toast({
       title: 'Comentario eliminado',
       description: 'El comentario ha sido eliminado permanentemente.',
     });
     setShowDeleteConfirm(false);
-    setRatingIdToDelete(null);
+    setRatingToDelete(null);
   };
 
-  const getCourthouseName = (id: string) => {
-    return mockCourthouses.find(c => c.id === id)?.nombre ?? 'Juzgado no encontrado';
-  }
-
-  const getUserName = (id: string) => {
-      const user = mockUsers.find(u => u.id === id);
-      return user ? `${user.nombre} ${user.apellido}` : 'Usuario anónimo';
-  }
+  const getCourthouseName = (id: string) => courthouseMap.get(id) ?? 'Juzgado no encontrado';
+  const getUserName = (id: string) => lawyerMap.get(id) ?? 'Usuario anónimo';
   
   const statusBadgeVariant = {
       pending: 'secondary',
@@ -74,14 +86,21 @@ export default function AdminCommentsPage() {
         <h2 className="text-2xl font-bold">Moderar Comentarios</h2>
       </div>
       <div className="space-y-4">
-        {ratings.map(rating => (
+        {isLoading && [...Array(3)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+            <CardContent><Skeleton className="h-10 w-full" /></CardContent>
+            <CardFooter><Skeleton className="h-8 w-24 ml-auto" /></CardFooter>
+          </Card>
+        ))}
+        {ratings && ratings.map(rating => (
           <Card key={rating.id} className={rating.status === 'pending' ? 'border-primary' : ''}>
             <CardHeader>
                  <div className="flex justify-between items-start">
                     <div>
-                        <CardTitle className="text-lg">{getCourthouseName(rating.juzgadoId)}</CardTitle>
+                        <CardTitle className="text-lg">{getCourthouseName(rating.courthouseId)}</CardTitle>
                         <CardDescription>
-                            Por: {getUserName(rating.usuarioId)} - Calificado el: {' '}
+                            Por: {getUserName(rating.lawyerId)} - Calificado el: {' '}
                             {format(new Date(rating.fechaCalificacion), "dd 'de' MMMM, yyyy", {
                                 locale: es,
                             })}
@@ -103,7 +122,7 @@ export default function AdminCommentsPage() {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => handleUpdateStatus(rating.id, 'approved')}
+                      onClick={() => handleUpdateStatus(rating, 'approved')}
                       className="text-green-600 border-green-600 hover:bg-green-50 hover:text-green-700"
                     >
                       <Check className="mr-2 h-4 w-4" />
@@ -112,7 +131,7 @@ export default function AdminCommentsPage() {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => handleUpdateStatus(rating.id, 'rejected')}
+                      onClick={() => handleUpdateStatus(rating, 'rejected')}
                       className="text-red-600 border-red-600 hover:bg-red-50 hover:text-red-700"
                     >
                       <X className="mr-2 h-4 w-4" />
@@ -123,7 +142,7 @@ export default function AdminCommentsPage() {
                  <Button 
                     variant="destructive" 
                     size="sm" 
-                    onClick={() => handleDeleteRequest(rating.id)}
+                    onClick={() => handleDeleteRequest(rating)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Eliminar
@@ -131,7 +150,7 @@ export default function AdminCommentsPage() {
             </CardFooter>
           </Card>
         ))}
-        {ratings.length === 0 && (
+        {!isLoading && ratings?.length === 0 && (
             <p className="text-muted-foreground text-center py-10">No hay comentarios para moderar.</p>
         )}
       </div>
@@ -144,7 +163,7 @@ export default function AdminCommentsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setRatingIdToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setRatingToDelete(null)}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { mockCourthouses, mockDependencias } from '@/lib/data';
+import { mockDependencias } from '@/lib/data';
 import {
   Table,
   TableBody,
@@ -49,14 +49,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  useCollection,
+  useFirebase,
+  useMemoFirebase,
+  addDocumentNonBlocking,
+  updateDocumentNonBlocking,
+  deleteDocumentNonBlocking,
+} from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AdminCourthousesPage() {
-  const [courthouses, setCourthouses] = useState<Courthouse[]>(mockCourthouses);
+  const { firestore } = useFirebase();
+  const courthousesQuery = useMemoFirebase(() => collection(firestore, 'courthouses'), [firestore]);
+  const { data: courthouses, isLoading } = useCollection<Courthouse>(courthousesQuery);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [dependenciaFilter, setDependenciaFilter] = useState('all');
   const [fueroFilter, setFueroFilter] = useState('all');
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [editingCourthouse, setEditingCourthouse] = useState<Courthouse | null>(null);
+  const [editingCourthouse, setEditingCourthouse] = useState<Partial<Courthouse> | null>(null);
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   const { toast } = useToast();
 
@@ -70,7 +83,7 @@ export default function AdminCourthousesPage() {
 
   useEffect(() => {
     if (editingCourthouse) {
-      form.reset(editingCourthouse);
+      form.reset(editingCourthouse as Courthouse);
     }
   }, [editingCourthouse, form]);
 
@@ -80,7 +93,7 @@ export default function AdminCourthousesPage() {
   );
 
   const fueros = useMemo(
-    () => ['all', ...Array.from(new Set(courthouses.map((c) => c.fuero))).sort()],
+    () => ['all', ...Array.from(new Set((courthouses || []).map((c) => c.fuero))).sort()],
     [courthouses]
   );
   
@@ -98,6 +111,7 @@ export default function AdminCourthousesPage() {
   };
 
   const filteredCourthouses = useMemo(() => {
+    if (!courthouses) return [];
     const searchWords = searchTerm.toLowerCase().split(' ').filter(Boolean);
 
     let displayCourthouses = courthouses.filter((courthouse) => {
@@ -166,8 +180,7 @@ export default function AdminCourthousesPage() {
   };
 
   const handleCreate = () => {
-    const newCourthouse: Courthouse = {
-      id: `courthouse-${Date.now()}`,
+    const newCourthouse: Partial<Courthouse> = {
       nombre: 'Nuevo Juzgado',
       dependencia: 'Buenos Aires',
       ciudad: 'La Plata',
@@ -186,7 +199,7 @@ export default function AdminCourthousesPage() {
 
   const handleSingleDelete = () => {
     if (!courthouseIdToDelete) return;
-    setCourthouses((prev) => prev.filter((c) => c.id !== courthouseIdToDelete));
+    deleteDocumentNonBlocking(doc(firestore, 'courthouses', courthouseIdToDelete));
     toast({
       title: 'Juzgado eliminado',
       description: 'El juzgado ha sido eliminado correctamente.',
@@ -197,7 +210,9 @@ export default function AdminCourthousesPage() {
 
   const handleBulkDelete = () => {
     const count = selectedRows.length;
-    setCourthouses((prev) => prev.filter((c) => !selectedRows.includes(c.id)));
+    selectedRows.forEach(id => {
+        deleteDocumentNonBlocking(doc(firestore, 'courthouses', id));
+    });
     setSelectedRows([]);
     toast({
       title: `${count} juzgado(s) eliminado(s)`,
@@ -207,12 +222,12 @@ export default function AdminCourthousesPage() {
   }
 
   const onSubmitEdit = (data: Courthouse) => {
-    const isNew = !courthouses.some(c => c.id === data.id);
+    const isNew = !editingCourthouse?.id;
     if (isNew) {
-        setCourthouses([data, ...courthouses]);
+        addDocumentNonBlocking(collection(firestore, 'courthouses'), data);
         toast({ title: 'Juzgado Creado', description: 'El nuevo juzgado ha sido añadido.' });
     } else {
-        setCourthouses(courthouses.map((c) => c.id === data.id ? data : c));
+        updateDocumentNonBlocking(doc(firestore, 'courthouses', editingCourthouse!.id!), data);
         toast({ title: 'Juzgado Actualizado', description: 'Los cambios en el juzgado han sido guardados.' });
     }
     setEditingCourthouse(null);
@@ -232,14 +247,9 @@ export default function AdminCourthousesPage() {
         return;
     }
 
-    setCourthouses(prev =>
-        prev.map(c => {
-            if (selectedRows.includes(c.id)) {
-                return { ...c, ...updates };
-            }
-            return c;
-        })
-    );
+    selectedRows.forEach(id => {
+      updateDocumentNonBlocking(doc(firestore, 'courthouses', id), updates);
+    });
 
     toast({
         title: 'Actualización en bloque exitosa',
@@ -330,10 +340,11 @@ export default function AdminCourthousesPage() {
               <TableHead className="w-[50px]">
                 <Checkbox
                   checked={
-                    selectedRows.length > 0 && selectedRows.length === filteredCourthouses.length ? true :
+                    courthouses && selectedRows.length > 0 && selectedRows.length === filteredCourthouses.length ? true :
                     selectedRows.length > 0 && selectedRows.length < filteredCourthouses.length ? 'indeterminate' : false
                   }
                   onCheckedChange={handleSelectAll}
+                  disabled={!courthouses}
                 />
               </TableHead>
               <TableHead>Nombre</TableHead>
@@ -344,7 +355,12 @@ export default function AdminCourthousesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredCourthouses.map((courthouse) => (
+            {isLoading && [...Array(5)].map((_, i) => (
+              <TableRow key={i}>
+                <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+              </TableRow>
+            ))}
+            {!isLoading && filteredCourthouses.map((courthouse) => (
               <TableRow key={courthouse.id} data-state={selectedRows.includes(courthouse.id) && 'selected'}>
                 <TableCell>
                   <Checkbox 
@@ -381,7 +397,7 @@ export default function AdminCourthousesPage() {
                 </TableCell>
               </TableRow>
             ))}
-             {filteredCourthouses.length === 0 && (
+             {!isLoading && filteredCourthouses.length === 0 && (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                         No se encontraron resultados.
@@ -396,7 +412,7 @@ export default function AdminCourthousesPage() {
           <Dialog open={!!editingCourthouse} onOpenChange={(isOpen) => !isOpen && setEditingCourthouse(null)}>
               <DialogContent>
                   <DialogHeader>
-                      <DialogTitle>{courthouses.some(c => c.id === editingCourthouse.id) ? 'Editar Juzgado' : 'Crear Juzgado'}</DialogTitle>
+                      <DialogTitle>{editingCourthouse.id ? 'Editar Juzgado' : 'Crear Juzgado'}</DialogTitle>
                       <DialogDescription>
                           Realice cambios en los detalles del juzgado aquí. Haga clic en guardar cuando haya terminado.
                       </DialogDescription>

@@ -1,5 +1,6 @@
-import { notFound } from "next/navigation";
-import { mockCourthouses, mockRatings } from "@/lib/data";
+'use client';
+
+import { notFound, useParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -21,13 +22,18 @@ import {
   Star,
   MapPin,
   Phone,
+  Loader2,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Rating, ratingCategories, RatingCategories } from "@/lib/types";
+import { Rating, ratingCategories, RatingCategories, Courthouse } from "@/lib/types";
 import { CommentCard } from "@/components/juzgados/comment-card";
 import { RatingForm } from "@/components/juzgados/rating-form";
 import AiSummary from "@/components/juzgados/ai-summary";
+import { useDoc, useCollection, useFirebase, useMemoFirebase } from "@/firebase";
+import { doc, collection } from "firebase/firestore";
+import { useMemo } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CourthouseDetailPageProps {
   params: {
@@ -61,7 +67,6 @@ function getAverageRatings(ratings: Rating[]) {
     practicidad: 0,
     capacitacionPersonal: 0,
   };
-  const counts = { ...totals };
   let overallTotal = 0;
 
   if (ratings.length === 0) {
@@ -76,23 +81,22 @@ function getAverageRatings(ratings: Rating[]) {
       const key = cat.key;
       const score = rating.puntuaciones[key] || 0;
       totals[key] += score;
-      counts[key]++;
       weightedScore += score * cat.weight;
     }
     overallTotal += (totalWeight > 0 ? weightedScore / totalWeight : 0);
   }
 
   const averages: RatingCategories = {
-    calidadResoluciones: totals.calidadResoluciones / (counts.calidadResoluciones || 1),
-    rapidezResoluciones: totals.rapidezResoluciones / (counts.rapidezResoluciones || 1),
-    rapidezDespacho: totals.rapidezDespacho / (counts.rapidezDespacho || 1),
-    atencionMesaEntradas: totals.atencionMesaEntradas / (counts.atencionMesaEntradas || 1),
-    tratoProfesional: totals.tratoProfesional / (counts.tratoProfesional || 1),
-    puntualidadAudiencias: totals.puntualidadAudiencias / (counts.puntualidadAudiencias || 1),
-    ordenGeneral: totals.ordenGeneral / (counts.ordenGeneral || 1),
-    tecnologia: totals.tecnologia / (counts.tecnologia || 1),
-    practicidad: totals.practicidad / (counts.practicidad || 1),
-    capacitacionPersonal: totals.capacitacionPersonal / (counts.capacitacionPersonal || 1),
+    calidadResoluciones: totals.calidadResoluciones / ratings.length,
+    rapidezResoluciones: totals.rapidezResoluciones / ratings.length,
+    rapidezDespacho: totals.rapidezDespacho / ratings.length,
+    atencionMesaEntradas: totals.atencionMesaEntradas / ratings.length,
+    tratoProfesional: totals.tratoProfesional / ratings.length,
+    puntualidadAudiencias: totals.puntualidadAudiencias / ratings.length,
+    ordenGeneral: totals.ordenGeneral / ratings.length,
+    tecnologia: totals.tecnologia / ratings.length,
+    practicidad: totals.practicidad / ratings.length,
+    capacitacionPersonal: totals.capacitacionPersonal / ratings.length,
   };
 
   const overallAverage = overallTotal / ratings.length;
@@ -100,18 +104,24 @@ function getAverageRatings(ratings: Rating[]) {
   return { averages, overallAverage };
 }
 
-export default function CourthouseDetailPage({
-  params,
-}: CourthouseDetailPageProps) {
-  const courthouse = mockCourthouses.find((c) => c.id === params.id);
-  if (!courthouse) {
+export default function CourthouseDetailPage({ params }: CourthouseDetailPageProps) {
+  const { firestore } = useFirebase();
+  const courthouseId = params.id;
+
+  const courthouseDocRef = useMemoFirebase(() => doc(firestore, 'courthouses', courthouseId), [firestore, courthouseId]);
+  const { data: courthouse, isLoading: isLoadingCourthouse } = useDoc<Courthouse>(courthouseDocRef);
+
+  const ratingsCollectionRef = useMemoFirebase(() => collection(firestore, 'courthouses', courthouseId, 'ratings'), [firestore, courthouseId]);
+  const { data: ratings, isLoading: isLoadingRatings } = useCollection<Rating>(ratingsCollectionRef);
+
+  const approvedRatings = useMemo(() => ratings?.filter(r => r.status === 'approved') ?? [], [ratings]);
+  const { averages, overallAverage } = useMemo(() => getAverageRatings(approvedRatings), [approvedRatings]);
+
+  const isLoading = isLoadingCourthouse || isLoadingRatings;
+
+  if (!isLoading && !courthouse) {
     notFound();
   }
-
-  const approvedRatings = mockRatings.filter(
-    (r) => r.juzgadoId === courthouse.id && r.status === 'approved'
-  );
-  const { averages, overallAverage } = getAverageRatings(approvedRatings);
 
   return (
     <div className="container mx-auto max-w-6xl py-8 px-4 md:px-6">
@@ -119,62 +129,82 @@ export default function CourthouseDetailPage({
         <div className="lg:col-span-2 space-y-8">
           <Card>
             <CardHeader>
-              <CardTitle className="text-3xl font-headline text-primary">
-                {courthouse.nombre}
-              </CardTitle>
-              <CardDescription className="space-y-2 pt-2">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-muted-foreground" />
-                  <span>
-                    {courthouse.direccion}, {courthouse.ciudad},{" "}
-                    {courthouse.dependencia}
-                  </span>
+              {isLoading ? <Skeleton className="h-9 w-3/4" /> : (
+                <CardTitle className="text-3xl font-headline text-primary">
+                  {courthouse?.nombre}
+                </CardTitle>
+              )}
+              {isLoading ? (
+                <div className="space-y-2 pt-2">
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-5 w-1/2" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  <span>{courthouse.telefono}</span>
-                </div>
-              </CardDescription>
+              ) : (
+                <CardDescription className="space-y-2 pt-2">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <span>
+                      {courthouse?.direccion}, {courthouse?.ciudad},{" "}
+                      {courthouse?.dependencia}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    <span>{courthouse?.telefono}</span>
+                  </div>
+                </CardDescription>
+              )}
             </CardHeader>
           </Card>
 
           <AiSummary
-            courtId={courthouse.id}
+            courtId={courthouseId}
             comments={approvedRatings.map((r) => r.comentario)}
           />
 
           <Card>
             <CardHeader>
               <CardTitle className="font-headline">Calificaciones</CardTitle>
-              <CardDescription>
-                Promedio de calificaciones basado en {approvedRatings.length}{" "}
-                evaluaciones.
-              </CardDescription>
+              {isLoading ? <Skeleton className="h-5 w-48 mt-1" /> : (
+                <CardDescription>
+                  Promedio de calificaciones basado en {approvedRatings.length}{" "}
+                  evaluaciones.
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent>
-              <div className="flex items-center mb-6">
-                <Star className="w-8 h-8 text-yellow-500 fill-yellow-500 mr-2" />
-                <span className="text-4xl font-bold">
-                  {overallAverage.toFixed(1)}
-                </span>
-                <span className="text-xl text-muted-foreground ml-2">/ 10</span>
-              </div>
-              <div className="space-y-4">
-                {ratingCategories.map(({ key, label }) => (
-                  <div key={key}>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center">
-                        {iconMap[key]}
-                        <span className="text-sm font-medium">{label}</span>
-                      </div>
-                      <span className="text-sm font-bold">
-                        {averages[key].toFixed(1)}
-                      </span>
-                    </div>
-                    <Progress value={averages[key] * 10} />
+              {isLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-32" />
+                  {[...Array(5)].map(i => <Skeleton key={i} className="h-8 w-full" />)}
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center mb-6">
+                    <Star className="w-8 h-8 text-yellow-500 fill-yellow-500 mr-2" />
+                    <span className="text-4xl font-bold">
+                      {overallAverage.toFixed(1)}
+                    </span>
+                    <span className="text-xl text-muted-foreground ml-2">/ 10</span>
                   </div>
-                ))}
-              </div>
+                  <div className="space-y-4">
+                    {ratingCategories.map(({ key, label }) => (
+                      <div key={key}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center">
+                            {iconMap[key]}
+                            <span className="text-sm font-medium">{label}</span>
+                          </div>
+                          <span className="text-sm font-bold">
+                            {averages[key].toFixed(1)}
+                          </span>
+                        </div>
+                        <Progress value={averages[key] * 10} />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -183,7 +213,11 @@ export default function CourthouseDetailPage({
               <CardTitle className="font-headline">Comentarios de Abogados</CardTitle>
             </CardHeader>
             <CardContent>
-              {approvedRatings.length > 0 ? (
+              {isLoading ? (
+                 <div className="space-y-6">
+                    {[...Array(2)].map(i => <Skeleton key={i} className="h-24 w-full" />)}
+                 </div>
+              ) : approvedRatings.length > 0 ? (
                 <div className="space-y-6">
                   {approvedRatings.map((rating, index) => (
                     <>
@@ -204,7 +238,7 @@ export default function CourthouseDetailPage({
 
         <div className="lg:col-span-1">
           <div className="sticky top-24">
-            <RatingForm courthouseId={courthouse.id} />
+            <RatingForm courthouseId={courthouseId} />
           </div>
         </div>
       </div>

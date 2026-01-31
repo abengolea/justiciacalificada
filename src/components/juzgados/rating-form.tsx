@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useFirebase, useUser, addDocumentNonBlocking } from "@/firebase";
@@ -93,7 +93,7 @@ const StarRating = ({
 export function RatingForm({ courthouseId }: { courthouseId: string }) {
   const { toast } = useToast();
   const { firestore } = useFirebase();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -127,8 +127,8 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
     const ratingsCollectionRef = collection(firestore, 'courthouses', courthouseId, 'ratings');
     
     const newRatingData = { 
-      juzgadoId: courthouseId, 
-      usuarioId: user.uid,
+      courthouseId: courthouseId, 
+      lawyerId: user.uid,
       ...values,
       fechaCalificacion: new Date().toISOString(),
       fechaExperiencia: values.fechaExperiencia.toISOString(),
@@ -137,7 +137,6 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
     
     addDocumentNonBlocking(ratingsCollectionRef, newRatingData);
     
-    // Send email notification to admin for moderation
     const mailData = {
         to: ['justiciacalificada@gmail.com'],
         message: {
@@ -161,6 +160,125 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
     });
     form.reset();
   }
+  
+  const renderForm = () => {
+    if (isUserLoading) {
+      return (
+        <div className="flex items-center justify-center h-40">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    if (!user) {
+       return (
+        <div className="p-6 text-center">
+            <p className="text-muted-foreground">Debe <a href="/login" className="underline text-primary">iniciar sesión</a> para calificar.</p>
+        </div>
+       )
+    }
+
+    return (
+         <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="space-y-6">
+              <FormField
+                control={form.control}
+                name="puntuaciones"
+                render={() => (
+                  <FormItem>
+                    {ratingCategories.map(({ key, label, weight }) => (
+                      <FormField
+                        key={key}
+                        control={form.control}
+                        name={`puntuaciones.${key}`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{label} <span className="text-muted-foreground text-xs">(x{weight})</span></FormLabel>
+                            <FormControl>
+                              <StarRating
+                                value={field.value}
+                                onChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="fechaExperiencia"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Fecha de la experiencia</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP", { locale: es })
+                            ) : (
+                              <span>Seleccione una fecha</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date > new Date() || date < new Date("1900-01-01")
+                          }
+                          initialFocus
+                          locale={es}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="comentario"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Comentario</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Describa su experiencia..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" className="w-full">
+                Enviar Calificación
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+    );
+  }
 
   return (
     <Card>
@@ -170,103 +288,7 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
           Su evaluación es anónima y valiosa.
         </CardDescription>
       </CardHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6">
-            <FormField
-              control={form.control}
-              name="puntuaciones"
-              render={() => (
-                <FormItem>
-                  {ratingCategories.map(({ key, label, weight }) => (
-                    <FormField
-                      key={key}
-                      control={form.control}
-                      name={`puntuaciones.${key}`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{label} <span className="text-muted-foreground text-xs">(x{weight})</span></FormLabel>
-                          <FormControl>
-                            <StarRating
-                              value={field.value}
-                              onChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  ))}
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="fechaExperiencia"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Fecha de la experiencia</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP", { locale: es })
-                          ) : (
-                            <span>Seleccione una fecha</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                          date > new Date() || date < new Date("1900-01-01")
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="comentario"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Comentario</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Describa su experiencia..."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full">
-              Enviar Calificación
-            </Button>
-          </CardFooter>
-        </form>
-      </Form>
+      {renderForm()}
     </Card>
   );
 }

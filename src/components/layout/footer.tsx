@@ -1,10 +1,33 @@
+'use client';
+
 import { AppLogo } from "@/components/icons";
 import Link from "next/link";
-import { mockUsers } from "@/lib/data";
 import { Shield } from "lucide-react";
+import { useUser, useFirebase } from "@/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { useState, useEffect } from "react";
 
 export function SiteFooter() {
-  const user = mockUsers.find(u => u.role === 'admin');
+  const { user } = useUser();
+  const { firestore } = useFirebase();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      const checkAdmin = async () => {
+        const lawyerRef = doc(firestore, 'lawyers', user.uid);
+        const lawyerDoc = await getDoc(lawyerRef);
+        if (lawyerDoc.exists() && lawyerDoc.data().role === 'admin') {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      };
+      checkAdmin();
+    } else {
+      setIsAdmin(false);
+    }
+  }, [user, firestore]);
 
   return (
     <footer className="border-t">
@@ -25,7 +48,7 @@ export function SiteFooter() {
              <Link href="/contacto" className="hover:text-foreground">Contacto</Link>
           </div>
         </div>
-        {user?.role === 'admin' && (
+        {isAdmin && (
             <Link href="/admin" className="absolute bottom-4 right-4 hover:text-foreground" title="Administración">
               <Shield className="h-4 w-4 text-muted-foreground" />
               <span className="sr-only">Administración</span>
