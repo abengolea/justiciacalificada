@@ -76,7 +76,7 @@ export function SiteHeader() {
       subItems: [
         { title: 'Buscar', href: '/juzgados' },
         { title: 'Comparar', href: '#' },
-        { title: 'Ranking', href: '#' },
+        { title: 'Ranking', href: '/ranking' },
         { title: 'Proponer', href: '#' },
       ],
     },
