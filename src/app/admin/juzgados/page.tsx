@@ -22,7 +22,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import Papa, { ParseResult } from 'papaparse';
 import { useFirebase } from '@/firebase';
-import { collection, writeBatch, doc, getDocs } from 'firebase/firestore';
+import { collection, writeBatch, doc, getDocs, deleteDoc } from 'firebase/firestore';
 import { Progress } from '@/components/ui/progress';
 import {
   AlertDialog,
@@ -59,6 +59,7 @@ interface JuzgadoRaw {
     instancia?: string;
     direccion?: string;
     telefono?: string;
+    id_tipo: string;
     [key: string]: any;
 }
 
@@ -118,7 +119,7 @@ export default function AdminCourthousesPage() {
         complete: (results) => {
           if (results.errors.length) {
             console.error(`Errors parsing ${file.name}:`, results.errors);
-            reject(new Error(`Error analizando ${file.name}. Verifique el formato y la codificación.`));
+            reject(new Error(`Error analizando ${file.name}. Verifique el formato y la codificación. Errores: ${JSON.stringify(results.errors)}`));
           } else {
             resolve(results.data as T[]);
           }
@@ -139,8 +140,9 @@ export default function AdminCourthousesPage() {
     setError(null);
 
     try {
-      setStatusText('Analizando archivos de referencia...');
+      setStatusText('Analizando archivos de referencia (provincias, departamentos, ciudades)...');
       setProgress(5);
+      
       const [provinciasData, departamentosData, ciudadesData] = await Promise.all([
         parseFile<ProvinciaRaw>(files.provincias!),
         parseFile<DepartamentoRaw>(files.departamentos!),
@@ -152,8 +154,24 @@ export default function AdminCourthousesPage() {
       const provinciasMap = new Map(provinciasData.map(p => [p.id, p.nombre]));
       const departamentosMap = new Map(departamentosData.map(d => [d.id, { nombre: d.nombre, id_provincia: d.id_provincia }]));
       const ciudadesMap = new Map(ciudadesData.map(c => [c.id, { nombre: c.nombre, idprovincia: c.idprovincia }]));
+      
+      const fueroMap = new Map([
+        ["1", "Civil y Comercial"],
+        ["3", "Penal"],
+        ["4", "Laboral"],
+        ["5", "Contencioso Administrativo"],
+        ["7", "De Paz"],
+        ["8", "Familia"],
+      ]);
+      
+      const instanciaMap = new Map([
+        ["1", "Primera Instancia"],
+        ["7", "Cámara de Apelaciones"],
+        ["8", "Tribunal"],
+      ]);
 
-      setStatusText(`Procesando juzgados...`);
+
+      setStatusText(`Comenzando a procesar juzgados...`);
       setProgress(15);
       
       let batch = writeBatch(firestore);
@@ -165,55 +183,52 @@ export default function AdminCourthousesPage() {
         Papa.parse(files.juzgados!, {
           header: true,
           skipEmptyLines: true,
-          worker: false,
           encoding: encoding,
-          step: async (results: ParseResult<JuzgadoRaw>, parser) => {
+          chunk: async (results: ParseResult<JuzgadoRaw>, parser) => {
             parser.pause();
             try {
-              const juzgado = results.data;
-              if (!juzgado.nombre || juzgado.nombre.trim() === '') {
-                parser.resume();
-                return;
+              for (const juzgado of results.data) {
+                if (!juzgado.nombre || juzgado.nombre.trim() === '' || !juzgado.id_departamento) {
+                  continue;
+                }
+  
+                const departamento = departamentosMap.get(juzgado.id_departamento);
+                const provinciaId = departamento?.id_provincia;
+                const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
+                
+                const ciudadData = ciudadesMap.get(juzgado.id_ciudad);
+                const ciudadNombre = ciudadData ? ciudadData.nombre : 'N/A';
+
+                const fuero = fueroMap.get(juzgado.fuero || "") || 'Fuero no especificado';
+                const instancia = instanciaMap.get(juzgado.id_tipo) || 'Instancia no especificada';
+  
+                const courthouseDoc: CourthouseFinal = {
+                    nombre: juzgado.nombre,
+                    dependencia: provinciaNombre,
+                    ciudad: ciudadNombre,
+                    fuero: fuero,
+                    instancia: instancia,
+                    direccion: juzgado.direccion || '',
+                    telefono: juzgado.telefono || '',
+                };
+  
+                const docRef = doc(collection(firestore, 'courthouses'));
+                batch.set(docRef, courthouseDoc);
+                batchCounter++;
+                totalProcessed++;
+  
+                if (batchCounter >= BATCH_SIZE) {
+                    await batch.commit();
+                    setStatusText(`Cargando... ${totalProcessed} juzgados subidos.`);
+                    const currentProgress = 15 + (totalProcessed / 8500) * 85; 
+                    setProgress(Math.min(currentProgress, 99));
+                    batch = writeBatch(firestore);
+                    batchCounter = 0;
+                    await new Promise(r => setTimeout(r, 50)); 
+                }
               }
-
-              const departamento = departamentosMap.get(juzgado.id_departamento);
-              const provinciaId = departamento?.id_provincia;
-              const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
-              
-              const ciudadData = ciudadesMap.get(juzgado.id_ciudad);
-              const ciudadNombre = ciudadData ? ciudadData.nombre : 'N/A';
-
-              const courthouseDoc: CourthouseFinal = {
-                  nombre: juzgado.nombre,
-                  dependencia: provinciaNombre,
-                  ciudad: ciudadNombre,
-                  fuero: juzgado.fuero || 'Sin Fuero',
-                  instancia: juzgado.instancia || 'Sin Instancia',
-                  direccion: juzgado.direccion || '',
-                  telefono: juzgado.telefono || '',
-              };
-
-              const docRef = doc(collection(firestore, 'courthouses'));
-              batch.set(docRef, courthouseDoc);
-              batchCounter++;
-              totalProcessed++;
-
-              setStatusText(`Procesando... ${totalProcessed} juzgados encontrados.`);
-              if (files.juzgados) {
-                const currentProgress = 15 + (results.meta.cursor / files.juzgados.size) * 85;
-                setProgress(currentProgress);
-              }
-
-              if (batchCounter >= BATCH_SIZE) {
-                  await batch.commit();
-                  batch = writeBatch(firestore);
-                  batchCounter = 0;
-                  // Small delay to prevent UI freeze on very large files
-                  await new Promise(r => setTimeout(r, 20)); 
-              }
-
             } catch (stepError) {
-                console.error("Error procesando una fila:", stepError);
+                console.error("Error procesando un lote:", stepError);
                 parser.abort();
                 reject(stepError);
             } finally {
@@ -224,6 +239,7 @@ export default function AdminCourthousesPage() {
             try {
               if (batchCounter > 0) {
                 await batch.commit();
+                setStatusText(`Finalizando carga... ${totalProcessed} juzgados subidos.`);
               }
               setStatusText(`¡Carga Completa! Se procesaron y cargaron ${totalProcessed} juzgados.`);
               setProgress(100);
@@ -277,24 +293,23 @@ export default function AdminCourthousesPage() {
 
       setDeleteStatusText(`Encontrados ${totalDocs} juzgados para eliminar.`);
       
-      let batch = writeBatch(firestore);
-      let batchCounter = 0;
-      let deletedCounter = 0;
       const BATCH_SIZE = 499;
-
-      for (const docSnapshot of querySnapshot.docs) {
-        batch.delete(doc(firestore, 'courthouses', docSnapshot.id));
-        batchCounter++;
-        deletedCounter++;
-        
-        if (batchCounter === BATCH_SIZE || deletedCounter === totalDocs) {
-          await batch.commit();
-          setDeleteProgress((deletedCounter / totalDocs) * 100);
-          setDeleteStatusText(`Eliminando ${deletedCounter} de ${totalDocs} juzgados...`);
-          batch = writeBatch(firestore);
-          batchCounter = 0;
-          await new Promise(r => setTimeout(r, 50));
-        }
+      const batches = [];
+      
+      for (let i = 0; i < querySnapshot.docs.length; i += BATCH_SIZE) {
+        const batchDocs = querySnapshot.docs.slice(i, i + BATCH_SIZE);
+        const batch = writeBatch(firestore);
+        batchDocs.forEach(doc => batch.delete(doc.ref));
+        batches.push(batch);
+      }
+      
+      let deletedCounter = 0;
+      for (let i = 0; i < batches.length; i++) {
+        await batches[i].commit();
+        deletedCounter += batches[i].length;
+        setDeleteProgress((deletedCounter / totalDocs) * 100);
+        setDeleteStatusText(`Eliminando ${deletedCounter} de ${totalDocs} juzgados...`);
+        await new Promise(r => setTimeout(r, 100)); // Be nice to Firestore APIs
       }
 
       setDeleteProgress(100);
