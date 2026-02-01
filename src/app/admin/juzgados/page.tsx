@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Papa, { ParseResult } from 'papaparse';
-import { useFirebase } from '@/firebase';
+import { useFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, writeBatch, doc, getDocs, deleteDoc, WriteBatch, Firestore, collectionGroup } from 'firebase/firestore';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -48,11 +48,16 @@ class FirestoreBatchHandler {
   private batch: WriteBatch;
   private count: number = 0;
   private batchSize: number;
+  private currentCollection: string = '';
 
   constructor(db: Firestore, batchSize: number = 450) {
     this.db = db;
     this.batchSize = batchSize;
     this.batch = writeBatch(db);
+  }
+
+  setCurrentCollection(name: string) {
+    this.currentCollection = name;
   }
 
   async add(docRef: any, data: any) {
@@ -67,19 +72,25 @@ class FirestoreBatchHandler {
     if (this.count === 0) return;
     try {
       await this.batch.commit();
+    } catch (e: any) {
+        const permissionError = new FirestorePermissionError({
+            path: `(batch write to collection: ${this.currentCollection || 'unknown'})`,
+            operation: 'write',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw e; // re-throw to be caught by the calling function
     } finally {
       this.batch = writeBatch(this.db);
       this.count = 0;
     }
   }
 
-  addDelete(docRef: any) {
+  async addDelete(docRef: any) {
      this.batch.delete(docRef);
      this.count++;
      if (this.count >= this.batchSize) {
-        return this.commit();
+        await this.commit();
      }
-     return Promise.resolve();
   }
 }
 
@@ -124,6 +135,7 @@ export default function AdminDatabasePage() {
       setProgress(prev => ({ ...prev, [tableName]: { processed: 0, total: file.size, errors: 0, status: 'processing' } }));
       
       const batchHandler = new FirestoreBatchHandler(firestore);
+      batchHandler.setCurrentCollection(tableName);
       const errorBatchHandler = new FirestoreBatchHandler(firestore);
       let rowCounter = 0;
       let errorCounter = 0;
@@ -285,7 +297,6 @@ export default function AdminDatabasePage() {
         toast({ title: 'Importación Completa', description: 'Todos los archivos han sido procesados.' });
 
     } catch (e: any) {
-      console.error("Error crítico durante la importación:", e);
       addLog(`ERROR CRÍTICO: ${e.message}`, 'error');
       toast({ title: 'Error Crítico en la Importación', description: e.message, variant: 'destructive' });
     } finally {
@@ -298,18 +309,19 @@ export default function AdminDatabasePage() {
     addLog('Iniciando borrado de todas las colecciones importadas...', 'info');
 
     const collectionsToDelete = [...REQUIRED_TABLES, 'import_errors'];
+    const batchHandler = new FirestoreBatchHandler(firestore);
 
     for (const tableName of collectionsToDelete) {
         addLog(`Eliminando colección: ${tableName}...`);
+        batchHandler.setCurrentCollection(tableName);
+        const collectionRef = collection(firestore, tableName);
         try {
-            const collectionRef = collection(firestore, tableName);
             const querySnapshot = await getDocs(collectionRef);
             if (querySnapshot.empty) {
                 addLog(`La colección ${tableName} ya está vacía.`, 'info');
                 continue;
             }
             let deletedCount = 0;
-            const batchHandler = new FirestoreBatchHandler(firestore);
             
             for(const docSnapshot of querySnapshot.docs) {
                 await batchHandler.addDelete(docSnapshot.ref);
@@ -319,7 +331,19 @@ export default function AdminDatabasePage() {
 
             addLog(`Se eliminaron ${deletedCount} documentos de ${tableName}.`, 'success');
         } catch (e: any) {
-            addLog(`Error al eliminar de ${tableName}: ${e.message}`, 'error');
+            if (e.code === 'permission-denied') {
+                 const permissionError = new FirestorePermissionError({
+                    path: collectionRef.path,
+                    operation: 'list',
+                 });
+                 errorEmitter.emit('permission-error', permissionError);
+                 addLog(`Error de permisos al leer la colección '${tableName}'. No se puede continuar con el borrado.`, 'error');
+            } else {
+                 addLog(`Error al eliminar de ${tableName}: ${e.message}`, 'error');
+            }
+            setIsDeleting(false);
+            toast({ title: 'Error en el Borrado', description: `No se pudo completar el borrado para la tabla ${tableName}.`, variant: 'destructive' });
+            return;
         }
     }
     
