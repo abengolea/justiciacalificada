@@ -267,7 +267,7 @@ export default function AdminCourthousesPage() {
         header: true,
         skipEmptyLines: true,
         complete: async (results) => {
-            const requiredHeaders = ['nombre', 'dependencia', 'ciudad', 'fuero', 'instancia', 'direccion', 'telefono'];
+            const requiredHeaders = ['nombre'];
             const fileHeaders = results.meta.fields || [];
             const missingHeaders = requiredHeaders.filter(h => !fileHeaders.includes(h));
 
@@ -275,7 +275,7 @@ export default function AdminCourthousesPage() {
                 toast({
                     variant: "destructive",
                     title: "Error en el archivo CSV",
-                    description: `Faltan las siguientes columnas obligatorias: ${missingHeaders.join(', ')}`,
+                    description: `La columna obligatoria 'nombre' no se encuentra en el archivo.`,
                     duration: 10000,
                 });
                 setIsImporting(false);
