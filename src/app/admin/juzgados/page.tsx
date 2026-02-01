@@ -12,7 +12,7 @@ import {
   CardFooter
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import Papa from 'papaparse';
+import Papa, { ParseResult } from 'papaparse';
 import { useFirebase } from '@/firebase';
 import { collection, writeBatch, doc, getDocs } from 'firebase/firestore';
 import { Progress } from '@/components/ui/progress';
@@ -103,10 +103,8 @@ export default function AdminCourthousesPage() {
   const fixEncoding = (str: string): string => {
     if (!str) return '';
     try {
-        // Attempt to decode URI component after escaping. This handles many common encoding issues.
         return decodeURIComponent(escape(str));
     } catch (e) {
-        // If it fails, return the original string. It might already be correctly formatted.
         return str;
     }
   };
@@ -142,11 +140,10 @@ export default function AdminCourthousesPage() {
     try {
       setStatusText('Analizando archivos de referencia...');
       setProgress(5);
-      const [provinciasData, departamentosData, ciudadesData, juzgadosRaw] = await Promise.all([
+      const [provinciasData, departamentosData, ciudadesData] = await Promise.all([
         parseFile<ProvinciaRaw>(files.provincias!),
         parseFile<DepartamentoRaw>(files.departamentos!),
         parseFile<CiudadRaw>(files.ciudades!),
-        parseFile<JuzgadoRaw>(files.juzgados!),
       ]);
       
       setProgress(10);
@@ -154,70 +151,96 @@ export default function AdminCourthousesPage() {
       const provinciasMap = new Map(provinciasData.map(p => [p.id, fixEncoding(p.nombre)]));
       const departamentosMap = new Map(departamentosData.map(d => [d.id, { nombre: fixEncoding(d.nombre), id_provincia: d.id_provincia }]));
       const ciudadesMap = new Map(ciudadesData.map(c => [c.id, { nombre: fixEncoding(c.nombre), idprovincia: c.idprovincia }]));
-      
-      const totalJuzgados = juzgadosRaw.length;
-      setStatusText(`Se encontraron ${totalJuzgados} juzgados. Comenzando carga a la base de datos...`);
-      setProgress(20);
 
+      setStatusText(`Procesando juzgados...`);
+      setProgress(15);
+      
       let batch = writeBatch(firestore);
       let batchCounter = 0;
+      let totalProcessed = 0;
       const BATCH_SIZE = 499;
 
-      for (let i = 0; i < totalJuzgados; i++) {
-        const juzgado = juzgadosRaw[i];
+      await new Promise<void>((resolve, reject) => {
+        Papa.parse(files.juzgados!, {
+          header: true,
+          skipEmptyLines: true,
+          worker: false,
+          step: async (results: ParseResult<JuzgadoRaw>, parser) => {
+            parser.pause();
+            try {
+              const juzgado = results.data;
+              if (!juzgado.nombre || juzgado.nombre.trim() === '') {
+                parser.resume();
+                return;
+              }
 
-        if (!juzgado.nombre || juzgado.nombre.trim() === '') {
-            continue;
-        }
+              const departamento = departamentosMap.get(juzgado.id_departamento);
+              const provinciaId = departamento?.id_provincia;
+              const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
+              
+              const ciudadData = ciudadesMap.get(juzgado.id_ciudad);
+              const ciudadNombre = ciudadData ? ciudadData.nombre : 'N/A';
 
-        const departamento = departamentosMap.get(juzgado.id_departamento);
-        const provinciaId = departamento?.id_provincia;
-        const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
-        
-        let ciudadNombre = 'N/A';
-        if(juzgado.id_ciudad) {
-            const ciudadData = ciudadesMap.get(juzgado.id_ciudad);
-            if (ciudadData) {
-                ciudadNombre = ciudadData.nombre;
+              const courthouseDoc: CourthouseFinal = {
+                  nombre: fixEncoding(juzgado.nombre),
+                  dependencia: provinciaNombre,
+                  ciudad: ciudadNombre,
+                  fuero: fixEncoding(juzgado.fuero || 'Sin Fuero'),
+                  instancia: fixEncoding(juzgado.instancia || 'Sin Instancia'),
+                  direccion: fixEncoding(juzgado.direccion || ''),
+                  telefono: fixEncoding(juzgado.telefono || ''),
+              };
+
+              const docRef = doc(collection(firestore, 'courthouses'));
+              batch.set(docRef, courthouseDoc);
+              batchCounter++;
+              totalProcessed++;
+
+              setStatusText(`Procesando... ${totalProcessed} juzgados encontrados.`);
+              const currentProgress = 15 + (results.meta.cursor / files.juzgados!.size) * 85;
+              setProgress(currentProgress);
+
+              if (batchCounter >= BATCH_SIZE) {
+                  await batch.commit();
+                  batch = writeBatch(firestore);
+                  batchCounter = 0;
+                  // Small delay to prevent UI freeze on very large files
+                  await new Promise(r => setTimeout(r, 20)); 
+              }
+
+            } catch (stepError) {
+                console.error("Error procesando una fila:", stepError);
+                parser.abort();
+                reject(stepError);
+            } finally {
+                parser.resume();
             }
-        }
-
-        const courthouseDoc: CourthouseFinal = {
-            nombre: fixEncoding(juzgado.nombre),
-            dependencia: provinciaNombre,
-            ciudad: ciudadNombre,
-            fuero: fixEncoding(juzgado.fuero || ''),
-            instancia: fixEncoding(juzgado.instancia || ''),
-            direccion: fixEncoding(juzgado.direccion || ''),
-            telefono: fixEncoding(juzgado.telefono || ''),
-        };
-
-        const docRef = doc(collection(firestore, 'courthouses'));
-        batch.set(docRef, courthouseDoc);
-        batchCounter++;
-
-        if (batchCounter >= BATCH_SIZE || i === totalJuzgados - 1) {
-            await batch.commit();
-            const uploadedCount = i + 1;
-            setStatusText(`Cargando... ${uploadedCount} de ${totalJuzgados} juzgados.`);
-            const currentProgress = 20 + (uploadedCount / totalJuzgados) * 80;
-            setProgress(currentProgress);
-            batch = writeBatch(firestore);
-            batchCounter = 0;
-            await new Promise(r => setTimeout(r, 50));
-        }
-      }
-
-      setProgress(100);
-      setStatusText(`¡Carga Completa! Se procesaron y cargaron ${totalJuzgados} juzgados.`);
-      toast({
-        title: '¡Carga Completa!',
-        description: `Se han cargado ${totalJuzgados} juzgados en la base de datos.`,
-        variant: 'default',
+          },
+          complete: async () => {
+            try {
+              if (batchCounter > 0) {
+                await batch.commit();
+              }
+              setStatusText(`¡Carga Completa! Se procesaron y cargaron ${totalProcessed} juzgados.`);
+              setProgress(100);
+              toast({
+                title: '¡Carga Completa!',
+                description: `Se han cargado ${totalProcessed} juzgados en la base de datos.`,
+                variant: 'default',
+              });
+              resolve();
+            } catch (finalCommitError) {
+              reject(finalCommitError);
+            }
+          },
+          error: (err: any) => {
+            reject(new Error(`Error al analizar el archivo de juzgados: ${err.message}`));
+          }
+        });
       });
         
     } catch (e: any) {
-      console.error("Error during data load:", e);
+      console.error("Error durante la carga de datos:", e);
       const errorMessage = `Ocurrió un error: ${e.message || 'Error desconocido'}. Revise los archivos y la consola para más detalles.`;
       setError(errorMessage);
       setStatusText('Error en la carga.');
@@ -238,8 +261,8 @@ export default function AdminCourthousesPage() {
     setError(null);
 
     try {
-      const courthousesQuery = collection(firestore, 'courthouses');
-      const querySnapshot = await getDocs(courthousesQuery);
+      const courthousesRef = collection(firestore, 'courthouses');
+      const querySnapshot = await getDocs(courthousesRef);
       const totalDocs = querySnapshot.size;
       
       if (totalDocs === 0) {
@@ -279,7 +302,7 @@ export default function AdminCourthousesPage() {
       });
 
     } catch (e: any) {
-        console.error("Error during data deletion:", e);
+        console.error("Error durante la eliminación:", e);
         const errorMessage = `Ocurrió un error al eliminar: ${e.message || 'Error desconocido'}.`;
         setError(errorMessage);
         setDeleteStatusText('Error en la eliminación.');
