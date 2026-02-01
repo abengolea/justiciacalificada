@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef } from 'react';
@@ -99,25 +100,17 @@ export default function AdminCourthousesPage() {
   };
 
   const allFilesSelected = Object.values(files).every(file => file !== null);
-
-  const fixEncoding = (str: string): string => {
-    if (!str) return '';
-    try {
-        return decodeURIComponent(escape(str));
-    } catch (e) {
-        return str;
-    }
-  };
   
   const parseFile = <T,>(file: File): Promise<T[]> => {
     return new Promise((resolve, reject) => {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
+        encoding: "ISO-8859-1",
         complete: (results) => {
           if (results.errors.length) {
             console.error(`Errors parsing ${file.name}:`, results.errors);
-            reject(new Error(`Error analizando ${file.name}. Revise el formato y la codificación (debe ser UTF-8).`));
+            reject(new Error(`Error analizando ${file.name}. Revise el formato y la codificación.`));
           } else {
             resolve(results.data as T[]);
           }
@@ -148,9 +141,9 @@ export default function AdminCourthousesPage() {
       
       setProgress(10);
       setStatusText('Construyendo mapas de relaciones...');
-      const provinciasMap = new Map(provinciasData.map(p => [p.id, fixEncoding(p.nombre)]));
-      const departamentosMap = new Map(departamentosData.map(d => [d.id, { nombre: fixEncoding(d.nombre), id_provincia: d.id_provincia }]));
-      const ciudadesMap = new Map(ciudadesData.map(c => [c.id, { nombre: fixEncoding(c.nombre), idprovincia: c.idprovincia }]));
+      const provinciasMap = new Map(provinciasData.map(p => [p.id, p.nombre]));
+      const departamentosMap = new Map(departamentosData.map(d => [d.id, { nombre: d.nombre, id_provincia: d.id_provincia }]));
+      const ciudadesMap = new Map(ciudadesData.map(c => [c.id, { nombre: c.nombre, idprovincia: c.idprovincia }]));
 
       setStatusText(`Procesando juzgados...`);
       setProgress(15);
@@ -165,6 +158,7 @@ export default function AdminCourthousesPage() {
           header: true,
           skipEmptyLines: true,
           worker: false,
+          encoding: "ISO-8859-1",
           step: async (results: ParseResult<JuzgadoRaw>, parser) => {
             parser.pause();
             try {
@@ -182,13 +176,13 @@ export default function AdminCourthousesPage() {
               const ciudadNombre = ciudadData ? ciudadData.nombre : 'N/A';
 
               const courthouseDoc: CourthouseFinal = {
-                  nombre: fixEncoding(juzgado.nombre),
+                  nombre: juzgado.nombre,
                   dependencia: provinciaNombre,
                   ciudad: ciudadNombre,
-                  fuero: fixEncoding(juzgado.fuero || 'Sin Fuero'),
-                  instancia: fixEncoding(juzgado.instancia || 'Sin Instancia'),
-                  direccion: fixEncoding(juzgado.direccion || ''),
-                  telefono: fixEncoding(juzgado.telefono || ''),
+                  fuero: juzgado.fuero || 'Sin Fuero',
+                  instancia: juzgado.instancia || 'Sin Instancia',
+                  direccion: juzgado.direccion || '',
+                  telefono: juzgado.telefono || '',
               };
 
               const docRef = doc(collection(firestore, 'courthouses'));
@@ -197,8 +191,10 @@ export default function AdminCourthousesPage() {
               totalProcessed++;
 
               setStatusText(`Procesando... ${totalProcessed} juzgados encontrados.`);
-              const currentProgress = 15 + (results.meta.cursor / files.juzgados!.size) * 85;
-              setProgress(currentProgress);
+              if (files.juzgados) {
+                const currentProgress = 15 + (results.meta.cursor / files.juzgados.size) * 85;
+                setProgress(currentProgress);
+              }
 
               if (batchCounter >= BATCH_SIZE) {
                   await batch.commit();
