@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -58,17 +58,15 @@ import {
 } from '@/firebase';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import Papa from 'papaparse';
 import { mockDependencias } from '@/lib/data';
+import { juzgadosDePrueba } from '@/lib/juzgados-data';
 
 export default function AdminCourthousesPage() {
   const { firestore } = useFirebase();
   const courthousesQuery = useMemoFirebase(() => collection(firestore, 'courthouses'), [firestore]);
   const { data: courthouses, isLoading } = useCollection<Courthouse>(courthousesQuery);
   
-  const [isImporting, setIsImporting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dependenciaFilter, setDependenciaFilter] = useState('all');
   const [fueroFilter, setFueroFilter] = useState('all');
@@ -256,123 +254,73 @@ export default function AdminCourthousesPage() {
       });
     });
   };
+  
+  const handleLoadFromFile = async () => {
+      if (!courthouses) {
+          toast({ variant: "destructive", title: 'Error', description: 'No se pudo leer la lista de juzgados existentes para limpiarla.' });
+          return;
+      }
 
-  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+      setIsUploading(true);
+      toast({ title: 'Iniciando carga...', description: 'Eliminando juzgados existentes para evitar duplicados.' });
 
-    setIsImporting(true);
-    toast({
-        title: "Iniciando importación...",
-        description: "Por favor espere mientras se procesa el archivo CSV. Esto puede tardar varios minutos para archivos grandes.",
-        duration: 5000,
-    });
+      try {
+          // Step 1: Delete existing courthouses to prevent duplicates.
+          // This operation is destructive but ensures a clean slate.
+          const deleteOps = [];
+          for(let i = 0; i < courthouses.length; i += 490) {
+              const chunk = courthouses.slice(i, i + 490);
+              const deleteBatch = writeBatch(firestore);
+              chunk.forEach(c => {
+                  deleteBatch.delete(doc(firestore, 'courthouses', c.id));
+              });
+              deleteOps.push(deleteBatch.commit());
+          }
+          await Promise.all(deleteOps);
+          
+          toast({ title: 'Juzgados existentes eliminados.', description: `Ahora cargando ${juzgadosDePrueba.length} nuevos juzgados.` });
 
-    Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-            const requiredHeaders = ['nombre'];
-            const fileHeaders = results.meta.fields || [];
-            const missingHeaders = requiredHeaders.filter(h => !fileHeaders.includes(h));
+          // Step 2: Add new courthouses from the file in batches
+          const addOps = [];
+          for (let i = 0; i < juzgadosDePrueba.length; i += 490) {
+              const batch = writeBatch(firestore);
+              const chunk = juzgadosDePrueba.slice(i, i + 490);
+              
+              chunk.forEach(juzgado => {
+                  const docRef = doc(collection(firestore, 'courthouses'));
+                  batch.set(docRef, juzgado);
+              });
+              addOps.push(batch.commit());
+              
+              // This toast can be overwhelming, let's just show progress at the end
+          }
+          await Promise.all(addOps);
+          
+          toast({ title: 'Carga completada', description: `Se cargaron exitosamente ${juzgadosDePrueba.length} juzgados.` });
 
-            if (missingHeaders.length > 0) {
-                toast({
-                    variant: "destructive",
-                    title: "Error en el archivo CSV",
-                    description: `La columna obligatoria 'nombre' no se encuentra en el archivo.`,
-                    duration: 10000,
-                });
-                setIsImporting(false);
-                return;
-            }
-
-            const courthousesData = results.data as any[];
-            let successfulImports = 0;
-            const batchSize = 499; // Firestore allows a maximum of 500 operations in a single batch.
-
-            try {
-                for (let i = 0; i < courthousesData.length; i += batchSize) {
-                    const batch = writeBatch(firestore);
-                    const chunk = courthousesData.slice(i, i + batchSize);
-                    
-                    chunk.forEach(courthouse => {
-                        if (courthouse.nombre && courthouse.nombre.trim() !== '') {
-                            const docRef = doc(collection(firestore, 'courthouses')); // Firestore will generate an ID
-                            const newCourthouse = {
-                                nombre: courthouse.nombre || '',
-                                dependencia: courthouse.dependencia || '',
-                                ciudad: courthouse.ciudad || '',
-                                fuero: courthouse.fuero || '',
-                                instancia: courthouse.instancia || '',
-                                direccion: courthouse.direccion || '',
-                                telefono: courthouse.telefono || '',
-                            };
-                            batch.set(docRef, newCourthouse);
-                            successfulImports++;
-                        }
-                    });
-                    
-                    await batch.commit();
-                    
-                    toast({
-                        title: "Importando...",
-                        description: `Se han procesado ${i + chunk.length} de ${courthousesData.length} filas.`,
-                        duration: 3000,
-                    });
-                }
-                
-                toast({
-                    title: "Importación completada",
-                    description: `Se han añadido ${successfulImports} juzgados a la base de datos. La página se actualizará.`,
-                    duration: 5000,
-                });
-
-            } catch (error) {
-                console.error("Error al importar juzgados:", error);
-                toast({
-                    variant: "destructive",
-                    title: "Error de importación",
-                    description: "Ocurrió un error al guardar los juzgados. Consulte la consola para más detalles.",
-                    duration: 10000,
-                });
-            } finally {
-                setIsImporting(false);
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = ""; // Reset file input
-                }
-            }
-        },
-        error: (error: any) => {
-            console.error("Error al parsear CSV:", error);
-            toast({
-                variant: "destructive",
-                title: "Error de archivo",
-                description: "No se pudo leer el archivo CSV. Verifique el formato.",
-                duration: 10000,
-            });
-            setIsImporting(false);
-        }
-    });
+      } catch (error) {
+          console.error("Error al cargar juzgados desde archivo:", error);
+          toast({
+              variant: "destructive",
+              title: "Error de carga",
+              description: "Ocurrió un error. Consulte la consola para más detalles.",
+          });
+      } finally {
+          setIsUploading(false);
+      }
   };
+
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">Gestionar Juzgados</h2>
         <div className="flex gap-2">
-           <Button onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
-              {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-              {isImporting ? 'Importando...' : 'Importar desde CSV'}
+           <Button onClick={handleLoadFromFile} disabled={isUploading}>
+              {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+              {isUploading ? 'Cargando...' : 'Cargar Juzgados desde Archivo'}
            </Button>
-           <Input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileImport} 
-              className="hidden" 
-              accept=".csv"
-           />
-          <Button onClick={handleCreate} disabled={isImporting}>
+          <Button onClick={handleCreate} disabled={isUploading}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Crear Juzgado
           </Button>
@@ -498,7 +446,7 @@ export default function AdminCourthousesPage() {
              {!isLoading && filteredCourthouses.length === 0 && (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
-                        No se encontraron resultados. Utilice el botón "Importar desde CSV" para poblar la base de datos.
+                        No se encontraron resultados. Utilice el botón "Cargar Juzgados desde Archivo" para poblar la base de datos.
                     </TableCell>
                 </TableRow>
             )}
@@ -546,6 +494,14 @@ export default function AdminCourthousesPage() {
                          <div className="grid gap-2">
                           <Label htmlFor="instancia">Instancia</Label>
                           <Input id="instancia" {...form.register('instancia')} />
+                        </div>
+                         <div className="grid gap-2">
+                          <Label htmlFor="direccion">Dirección</Label>
+                          <Input id="direccion" {...form.register('direccion')} />
+                        </div>
+                         <div className="grid gap-2">
+                          <Label htmlFor="telefono">Teléfono</Label>
+                          <Input id="telefono" {...form.register('telefono')} />
                         </div>
                       <DialogFooter>
                           <Button type="button" variant="ghost" onClick={() => setEditingCourthouse(null)}>Cancelar</Button>
