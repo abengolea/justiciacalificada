@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -13,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Papa from 'papaparse';
-import { useFirebase, addDocumentNonBlocking } from '@/firebase';
+import { useFirebase } from '@/firebase';
 import { collection, writeBatch, doc } from 'firebase/firestore';
 import { Progress } from '@/components/ui/progress';
 
@@ -75,6 +74,7 @@ export default function AdminCourthousesPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [statusText, setStatusText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -95,26 +95,22 @@ export default function AdminCourthousesPage() {
   const allFilesSelected = Object.values(files).every(file => file !== null);
 
   const fixEncoding = (str: string): string => {
-    // This is a simplified fix for the most common mojibake issues found in the provided SQL dumps.
-    // It's not a full latin1 to utf8 conversion but targets the specific visual artifacts.
+    if (!str) return '';
     try {
-      // Attempt to decode as UTF-8. If it works, it might already be correct.
-      // If it throws, it has invalid sequences, which we'll then try to fix.
       decodeURIComponent(escape(str));
       return str;
     } catch (e) {
-      // The string is not valid UTF-8, so let's apply common fixes.
       return str
-        .replace(/Ã³/g, 'ó').replace(/Ã±/g, 'ñ').replace(/Ã³/g, 'ó')
-        .replace(/Ã©/g, 'é').replace(/Ã¡/g, 'á').replace(/Ã­/g, 'í')
-        .replace(/Ãº/g, 'ú').replace(/Ã€/g, 'Á').replace(/Ã‰/g, 'É')
-        .replace(/Ã/g, 'Í').replace(/Ã“/g, 'Ó').replace(/Ãš/g, 'Ú')
-        .replace(/Â°/g, '°');
+        .replace(/Ã³/g, 'ó').replace(/Ã±/g, 'ñ').replace(/Ã©/g, 'é')
+        .replace(/Ã¡/g, 'á').replace(/Ã­/g, 'í').replace(/Ãº/g, 'ú')
+        .replace(/Ã€/g, 'Á').replace(/Ã‰/g, 'É').replace(/Ã/g, 'Í')
+        .replace(/Ã“/g, 'Ó').replace(/Ãš/g, 'Ú').replace(/Â°/g, '°');
     }
   };
 
-  const parseCsv = <T,>(file: File): Promise<T[]> => {
+  const parseCsv = <T,>(file: File, name: string): Promise<T[]> => {
     return new Promise((resolve, reject) => {
+      setStatusText(`Analizando ${name}...`);
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
@@ -136,22 +132,24 @@ export default function AdminCourthousesPage() {
     if (!allFilesSelected) return;
     setIsLoading(true);
     setProgress(0);
+    setStatusText('');
     setError(null);
 
     try {
         const [provinciasData, departamentosData, ciudadesData, juzgadosData] = await Promise.all([
-            parseCsv<Provincia>(files.provincias!),
-            parseCsv<Departamento>(files.departamentos!),
-            parseCsv<Ciudad>(files.ciudades!),
-            parseCsv<JuzgadoRaw>(files.juzgados!),
+            parseCsv<Provincia>(files.provincias!, 'provincias.csv'),
+            parseCsv<Departamento>(files.departamentos!, 'departamentos.csv'),
+            parseCsv<Ciudad>(files.ciudades!, 'ciudades.csv'),
+            parseCsv<JuzgadoRaw>(files.juzgados!, 'juzgados.csv'),
         ]);
         setProgress(10);
+        setStatusText('Archivos analizados. Construyendo mapa de relaciones...');
         
         const provinciasMap = new Map(provinciasData.map(p => [p.id, fixEncoding(p.nombre)]));
         const departamentosMap = new Map(departamentosData.map(d => [d.id, { nombre: fixEncoding(d.nombre), id_provincia: d.id_provincia }]));
         const ciudadesMap = new Map(ciudadesData.map(c => [c.id, fixEncoding(c.nombre)]));
         
-        toast({ title: 'Archivos procesados', description: 'Generando listado final de juzgados...' });
+        setStatusText('Generando listado final de juzgados...');
         setProgress(20);
 
         const courthousesToUpload: CourthouseFinal[] = juzgadosData.map(juzgado => {
@@ -166,18 +164,19 @@ export default function AdminCourthousesPage() {
                 nombre: fixEncoding(juzgado.nombre),
                 dependencia: provinciaNombre,
                 ciudad: ciudadNombre,
-                // These fields are not in the SQL dumps, so we initialize them as empty.
+                // Estos campos no están en los archivos SQL proporcionados, se inicializan vacíos.
                 fuero: '', 
                 instancia: '',
                 direccion: '',
                 telefono: ''
             };
-        }).filter(c => c.nombre); // Filter out any potential empty rows
+        }).filter(c => c.nombre); // Filtrar filas potencialmente vacías
 
         setProgress(40);
+        setStatusText(`Se cargarán ${courthousesToUpload.length} juzgados. Esto puede tardar varios minutos.`);
         toast({ title: 'Subiendo datos...', description: `Se cargarán ${courthousesToUpload.length} juzgados. Esto puede tardar varios minutos.` });
 
-        const batchSize = 400;
+        const batchSize = 400; // Firestore limita los lotes a 500 operaciones
         let totalUploaded = 0;
         for (let i = 0; i < courthousesToUpload.length; i += batchSize) {
             const batch = writeBatch(firestore);
@@ -190,18 +189,26 @@ export default function AdminCourthousesPage() {
             
             await batch.commit();
             totalUploaded += chunk.length;
-            setProgress(40 + (totalUploaded / courthousesToUpload.length) * 60);
+            const currentProgress = 40 + (totalUploaded / courthousesToUpload.length) * 60;
+            setProgress(currentProgress);
+            setStatusText(`Cargados ${totalUploaded} de ${courthousesToUpload.length} juzgados.`);
+            
+            // Pausa breve para no sobrecargar el navegador y permitir actualizaciones de la UI
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
 
+        setStatusText('¡Carga Completa!');
         toast({
             title: '¡Carga Completa!',
-            description: `Se han cargado ${courthousesToUpload.length} juzgados en la base de datos.`,
+            description: `Se han cargado ${totalUploaded} juzgados en la base de datos.`,
             variant: 'default',
         });
         
     } catch (e: any) {
       console.error(e);
-      setError(`Ocurrió un error: ${e.message}. Revise los archivos y la consola.`);
+      const errorMessage = `Ocurrió un error: ${e.message}. Revise los archivos y la consola.`;
+      setError(errorMessage);
+      setStatusText('Error en la carga.');
       toast({
         title: 'Error durante la importación',
         description: e.message || 'No se pudo completar la carga. Revise los archivos CSV.',
@@ -244,7 +251,7 @@ export default function AdminCourthousesPage() {
         <CardHeader>
           <CardTitle>Carga de Base de Datos desde CSV</CardTitle>
           <CardDescription>
-            Por favor, convierta sus archivos SQL a formato CSV y suba cada uno en su respectiva sección. Es fundamental que los archivos CSV tengan cabeceras (headers) que coincidan con los nombres de las columnas de sus tablas SQL.
+            Convierta sus tablas SQL (`provincias`, `departamentos`, `ciudades`, `juzgados`) a formato CSV y suba cada archivo. El sistema unirá los datos para crear la base de datos de juzgados.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -256,14 +263,14 @@ export default function AdminCourthousesPage() {
           </div>
 
           {isLoading && (
-            <div className="space-y-2">
-                <p className="text-sm text-center text-muted-foreground">Cargando... {Math.round(progress)}%</p>
+            <div className="space-y-2 pt-4">
+                <p className="text-sm text-center text-muted-foreground">{statusText} ({Math.round(progress)}%)</p>
                 <Progress value={progress} />
             </div>
           )}
 
           {error && (
-            <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+            <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20 mt-4">
                  <div className="flex items-start gap-4">
                     <AlertTriangle className="h-6 w-6 text-destructive mt-1" />
                     <div>
