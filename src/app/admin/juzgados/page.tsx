@@ -97,10 +97,12 @@ export default function AdminCourthousesPage() {
   const fixEncoding = (str: string): string => {
     if (!str) return '';
     try {
-      decodeURIComponent(escape(str));
-      return str;
+      // This is a common issue with CSVs exported from systems that use Windows-1252 but are read as UTF-8.
+      // A more robust solution would be to detect encoding, but this covers the most frequent cases.
+      return decodeURIComponent(escape(str));
     } catch (e) {
-      return str
+      // Fallback for strings that are already correctly encoded or have other issues.
+       return str
         .replace(/Ã³/g, 'ó').replace(/Ã±/g, 'ñ').replace(/Ã©/g, 'é')
         .replace(/Ã¡/g, 'á').replace(/Ã­/g, 'í').replace(/Ãº/g, 'ú')
         .replace(/Ã€/g, 'Á').replace(/Ã‰/g, 'É').replace(/Ã/g, 'Í')
@@ -108,7 +110,7 @@ export default function AdminCourthousesPage() {
     }
   };
 
-  const parseCsv = <T,>(file: File, name: string): Promise<T[]> => {
+  const parseFile = <T,>(file: File, name: string): Promise<T[]> => {
     return new Promise((resolve, reject) => {
       setStatusText(`Analizando ${name}...`);
       Papa.parse(file, {
@@ -116,17 +118,70 @@ export default function AdminCourthousesPage() {
         skipEmptyLines: true,
         complete: (results) => {
           if (results.errors.length) {
-            reject(new Error(`Error parsing ${file.name}: ${results.errors[0].message}`));
+            console.error(`Errors parsing ${file.name}:`, results.errors);
+            reject(new Error(`Error analizando ${file.name}. Revise el formato del archivo.`));
           } else {
             resolve(results.data as T[]);
           }
         },
-        error: (err) => {
-          reject(err);
+        error: (err: any) => {
+          console.error(`PapaParse error for ${file.name}:`, err);
+          reject(new Error(`No se pudo analizar el archivo ${file.name}: ${err.message}`));
         }
       });
     });
   }
+
+  const streamProcessJuzgados = (
+    juzgadosFile: File,
+    provinciasMap: Map<string, string>,
+    departamentosMap: Map<string, { nombre: string; id_provincia: string }>,
+    ciudadesMap: Map<string, string>
+  ): Promise<CourthouseFinal[]> => {
+      const courthousesToUpload: CourthouseFinal[] = [];
+      return new Promise((resolve, reject) => {
+        let rowCount = 0;
+        setStatusText('Procesando archivo de juzgados...');
+
+        Papa.parse(juzgadosFile, {
+            header: true,
+            skipEmptyLines: true,
+            // Use step callback for streaming to handle large files efficiently
+            step: (results) => {
+                const juzgado = results.data as JuzgadoRaw;
+                 if (juzgado.nombre) {
+                    rowCount++;
+                    const departamento = departamentosMap.get(juzgado.id_departamento);
+                    const ciudad = ciudadesMap.get(juzgado.id_ciudad);
+                    
+                    const provinciaId = departamento?.id_provincia;
+                    const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
+                    const ciudadNombre = ciudad || 'N/A';
+
+                    courthousesToUpload.push({
+                        nombre: fixEncoding(juzgado.nombre),
+                        dependencia: provinciaNombre,
+                        ciudad: ciudadNombre,
+                        fuero: '', 
+                        instancia: '',
+                        direccion: '',
+                        telefono: ''
+                    });
+                }
+            },
+            complete: () => {
+                setStatusText(`${rowCount} juzgados procesados. Preparando para la carga.`);
+                setProgress(40);
+                resolve(courthousesToUpload);
+            },
+            error: (err: any) => {
+              console.error(`PapaParse streaming error for juzgados.csv:`, err);
+              reject(new Error(`Error procesando el archivo de juzgados: ${err.message}`));
+            }
+        });
+      });
+  }
+
 
   const handleLoadData = async () => {
     if (!allFilesSelected) return;
@@ -136,47 +191,32 @@ export default function AdminCourthousesPage() {
     setError(null);
 
     try {
-        const [provinciasData, departamentosData, ciudadesData, juzgadosData] = await Promise.all([
-            parseCsv<Provincia>(files.provincias!, 'provincias.csv'),
-            parseCsv<Departamento>(files.departamentos!, 'departamentos.csv'),
-            parseCsv<Ciudad>(files.ciudades!, 'ciudades.csv'),
-            parseCsv<JuzgadoRaw>(files.juzgados!, 'juzgados.csv'),
+        setStatusText('Analizando archivos de referencia...');
+        const [provinciasData, departamentosData, ciudadesData] = await Promise.all([
+            parseFile<Provincia>(files.provincias!, 'provincias.csv'),
+            parseFile<Departamento>(files.departamentos!, 'departamentos.csv'),
+            parseFile<Ciudad>(files.ciudades!, 'ciudades.csv'),
         ]);
         setProgress(10);
-        setStatusText('Archivos analizados. Construyendo mapa de relaciones...');
+        setStatusText('Construyendo mapa de relaciones...');
         
         const provinciasMap = new Map(provinciasData.map(p => [p.id, fixEncoding(p.nombre)]));
         const departamentosMap = new Map(departamentosData.map(d => [d.id, { nombre: fixEncoding(d.nombre), id_provincia: d.id_provincia }]));
         const ciudadesMap = new Map(ciudadesData.map(c => [c.id, fixEncoding(c.nombre)]));
         
-        setStatusText('Generando listado final de juzgados...');
         setProgress(20);
+        
+        // Stream process the large juzgados file
+        const courthousesToUpload = await streamProcessJuzgados(files.juzgados!, provinciasMap, departamentosMap, ciudadesMap);
 
-        const courthousesToUpload: CourthouseFinal[] = juzgadosData.map(juzgado => {
-            const departamento = departamentosMap.get(juzgado.id_departamento);
-            const ciudad = ciudadesMap.get(juzgado.id_ciudad);
-            
-            const provinciaId = departamento?.id_provincia;
-            const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
-            const ciudadNombre = ciudad || 'N/A';
-
-            return {
-                nombre: fixEncoding(juzgado.nombre),
-                dependencia: provinciaNombre,
-                ciudad: ciudadNombre,
-                // Estos campos no están en los archivos SQL proporcionados, se inicializan vacíos.
-                fuero: '', 
-                instancia: '',
-                direccion: '',
-                telefono: ''
-            };
-        }).filter(c => c.nombre); // Filtrar filas potencialmente vacías
-
-        setProgress(40);
+        if (courthousesToUpload.length === 0) {
+            throw new Error("No se encontraron juzgados para cargar. Verifique que el archivo 'juzgados.csv' no esté vacío y tenga una columna 'nombre'.");
+        }
+        
         setStatusText(`Se cargarán ${courthousesToUpload.length} juzgados. Esto puede tardar varios minutos.`);
-        toast({ title: 'Subiendo datos...', description: `Se cargarán ${courthousesToUpload.length} juzgados. Esto puede tardar varios minutos.` });
+        toast({ title: 'Subiendo datos...', description: `Se cargarán ${courthousesToUpload.length} juzgados. No cierre esta ventana.` });
 
-        const batchSize = 400; // Firestore limita los lotes a 500 operaciones
+        const batchSize = 400;
         let totalUploaded = 0;
         for (let i = 0; i < courthousesToUpload.length; i += batchSize) {
             const batch = writeBatch(firestore);
@@ -193,8 +233,7 @@ export default function AdminCourthousesPage() {
             setProgress(currentProgress);
             setStatusText(`Cargados ${totalUploaded} de ${courthousesToUpload.length} juzgados.`);
             
-            // Pausa breve para no sobrecargar el navegador y permitir actualizaciones de la UI
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise(resolve => setTimeout(resolve, 100)); // Increased pause slightly for very large uploads
         }
 
         setStatusText('¡Carga Completa!');
@@ -205,13 +244,13 @@ export default function AdminCourthousesPage() {
         });
         
     } catch (e: any) {
-      console.error(e);
-      const errorMessage = `Ocurrió un error: ${e.message}. Revise los archivos y la consola.`;
+      console.error("Error during data load:", e);
+      const errorMessage = `Ocurrió un error: ${e.message || 'Error desconocido'}. Revise los archivos y la consola para más detalles.`;
       setError(errorMessage);
       setStatusText('Error en la carga.');
       toast({
         title: 'Error durante la importación',
-        description: e.message || 'No se pudo completar la carga. Revise los archivos CSV.',
+        description: e.message || 'No se pudo completar la carga. Revise los archivos CSV y la consola.',
         variant: 'destructive',
       });
     } finally {
@@ -229,7 +268,7 @@ export default function AdminCourthousesPage() {
         <>
           <FileCheck className="h-10 w-10 text-primary mb-2" />
           <p className="font-semibold text-primary truncate">{file.name}</p>
-          <p className="text-xs text-muted-foreground">{Math.round(file.size / 1024)} KB</p>
+          <p className="text-xs text-muted-foreground">{file.size > 1024 * 1024 ? `${(file.size / (1024*1024)).toFixed(1)} MB` : `${Math.round(file.size / 1024)} KB`}</p>
         </>
       ) : (
         <>
