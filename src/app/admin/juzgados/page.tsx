@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Database, Loader2, Upload, FileCheck, AlertTriangle, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Database, Loader2, Upload, FileCheck, AlertTriangle, Trash2 } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -31,7 +31,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-// As per the final prompt, we need to handle all 19 tables.
 const REQUIRED_TABLES = [
   'provincias', 'departamentos', 'ciudades', 'juzgados', 'fueros', 
   'fueros_x_juzgados', 'categorias', 'permisos', 'administradores', 'usuarios', 
@@ -40,8 +39,8 @@ const REQUIRED_TABLES = [
 ];
 
 type FileState = { [key: string]: File | null };
-type ProgressState = { [key: string]: { processed: number; total: number; errors: number } };
-type LogEntry = { type: 'info' | 'error' | 'success'; message: string };
+type ProgressState = { [key: string]: { processed: number; total: number; errors: number; status: 'pending' | 'processing' | 'done' | 'error' } };
+type LogEntry = { type: 'info' | 'error' | 'success' | 'warn'; message: string };
 
 // Helper class for robust Firestore batching
 class FirestoreBatchHandler {
@@ -56,13 +55,12 @@ class FirestoreBatchHandler {
     this.batch = writeBatch(db);
   }
 
-  add(docRef: any, data: any) {
+  async add(docRef: any, data: any) {
     this.batch.set(docRef, data);
     this.count++;
     if (this.count >= this.batchSize) {
-      return this.commit();
+      await this.commit();
     }
-    return Promise.resolve();
   }
 
   async commit() {
@@ -74,9 +72,18 @@ class FirestoreBatchHandler {
       this.count = 0;
     }
   }
+
+  addDelete(docRef: any) {
+     this.batch.delete(docRef);
+     this.count++;
+     if (this.count >= this.batchSize) {
+        return this.commit();
+     }
+     return Promise.resolve();
+  }
 }
 
-export default function AdminCourthousesPage() {
+export default function AdminDatabasePage() {
   const [files, setFiles] = useState<FileState>(
     REQUIRED_TABLES.reduce((acc, tbl) => ({ ...acc, [tbl]: null }), {})
   );
@@ -88,217 +95,198 @@ export default function AdminCourthousesPage() {
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
-
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   const addLog = (message: string, type: LogEntry['type'] = 'info') => {
-    setLogs(prev => [...prev, { type, message }]);
+    setLogs(prev => [...prev, { type, message: `[${new Date().toLocaleTimeString()}] ${message}` }]);
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, tableName: string) => {
     const file = e.target.files?.[0] || null;
+    if (file && !file.name.toLowerCase().endsWith('.csv')) {
+        toast({ title: "Tipo de archivo incorrecto", description: `Por favor, suba un archivo .csv para la tabla ${tableName}.`, variant: "destructive" });
+        return;
+    }
     setFiles(prev => ({ ...prev, [tableName]: file }));
   };
 
   const allFilesSelected = REQUIRED_TABLES.every(table => files[table]);
-  
-  const parseFileInChunks = <T,>(file: File, chunkSize: number, onChunk: (chunk: T[]) => Promise<void>, onComplete: (total: number) => void) => {
-    let rowCounter = 0;
+
+  const genericImport = (
+    tableName: string, 
+    file: File, 
+    memoryMaps: Record<string, Map<string, any>>,
+    onData: (row: any, maps: Record<string, Map<string, any>>) => any,
+    getId: (row: any) => string
+  ) => {
     return new Promise<void>((resolve, reject) => {
+      addLog(`Iniciando importación para: ${tableName}`);
+      setProgress(prev => ({ ...prev, [tableName]: { processed: 0, total: file.size, errors: 0, status: 'processing' } }));
+      
+      const batchHandler = new FirestoreBatchHandler(firestore);
+      const errorBatchHandler = new FirestoreBatchHandler(firestore);
+      let rowCounter = 0;
+      let errorCounter = 0;
+
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        chunkSize: chunkSize * 1024, // chunkSize in KB
-        chunk: async (results, parser) => {
-            parser.pause();
-            try {
-                rowCounter += results.data.length;
-                await onChunk(results.data as T[]);
-            } catch (err: any) {
-                reject(new Error(`Error processing chunk for ${file.name}: ${err.message}`));
-            } finally {
-                parser.resume();
+        worker: false,
+        step: async (results: ParseResult<any>, parser) => {
+          parser.pause();
+          try {
+            rowCounter++;
+            const rawData = results.data;
+            if (!rawData.id && tableName !== 'fueros_x_juzgados') {
+                throw new Error('La fila no tiene una columna "id".');
             }
+
+            const processedData = onData(rawData, memoryMaps);
+            const docId = getId(rawData);
+            const docRef = doc(firestore, tableName, docId);
+            await batchHandler.add(docRef, processedData);
+
+            if (rowCounter % 100 === 0) {
+              setProgress(prev => ({ ...prev, [tableName]: { ...prev[tableName], processed: results.meta.cursor } }));
+            }
+          } catch (err: any) {
+            errorCounter++;
+            addLog(`Error en la fila ${rowCounter} de ${tableName}: ${err.message}`, 'error');
+            const errorDocRef = doc(collection(firestore, 'import_errors'));
+            await errorBatchHandler.add(errorDocRef, {
+              table: tableName,
+              rowNumber: rowCounter,
+              rawRow: JSON.stringify(results.data),
+              error: err.message,
+              timestamp: new Date()
+            });
+          } finally {
+            parser.resume();
+          }
         },
-        complete: () => {
-            onComplete(rowCounter);
+        complete: async () => {
+          try {
+            await batchHandler.commit();
+            await errorBatchHandler.commit();
+            setProgress(prev => ({ ...prev, [tableName]: { processed: file.size, total: file.size, errors: errorCounter, status: 'done' } }));
+            addLog(`Finalizó importación para ${tableName}: ${rowCounter - errorCounter} filas exitosas, ${errorCounter} errores.`, errorCounter > 0 ? 'warn' : 'success');
             resolve();
+          } catch (err: any) {
+            addLog(`COMMIT FINAL FALLIDO para ${tableName}: ${err.message}`, 'error');
+            setProgress(prev => ({ ...prev, [tableName]: { ...prev[tableName], status: 'error' } }));
+            reject(err);
+          }
         },
         error: (err: any) => {
-          reject(new Error(`Failed to parse ${file.name}: ${err.message}`));
+          addLog(`Error de parseo para ${tableName}: ${err.message}`, 'error');
+          setProgress(prev => ({ ...prev, [tableName]: { ...prev[tableName], status: 'error' } }));
+          reject(err);
         }
       });
     });
   };
 
-  const genericImport = async (tableName: string, file: File) => {
-    addLog(`Starting import for table: ${tableName}`);
-    const batchHandler = new FirestoreBatchHandler(firestore);
-    const errorBatchHandler = new FirestoreBatchHandler(firestore);
-    let rowCounter = 0;
-    let errorCounter = 0;
-
-    setProgress(prev => ({ ...prev, [tableName]: { processed: 0, total: 0, errors: 0 } }));
-
-    await new Promise<void>((resolve, reject) => {
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            worker: false,
-            step: async (row: ParseResult<any>, parser) => {
-                parser.pause();
-                try {
-                    const data = row.data;
-                    const docId = data.id ? String(data.id) : parser.getCharIndex().toString(); // Use ID or fall back to character index
-
-                    if (!data.id) {
-                        addLog(`Row ${rowCounter + 1} in ${tableName} has no ID. Using fallback.`, 'error');
-                    }
-                    
-                    const docRef = doc(firestore, tableName, docId);
-                    await batchHandler.add(docRef, data);
-                    
-                    rowCounter++;
-                    if (rowCounter % 100 === 0) {
-                        setProgress(prev => ({ ...prev, [tableName]: { ...prev[tableName], processed: rowCounter } }));
-                    }
-
-                } catch (err: any) {
-                    errorCounter++;
-                    const errorDocRef = doc(collection(firestore, 'import_errors'));
-                    await errorBatchHandler.add(errorDocRef, {
-                        table: tableName,
-                        rowNumber: rowCounter,
-                        rawRow: JSON.stringify(row.data),
-                        error: err.message,
-                        timestamp: new Date()
-                    });
-                } finally {
-                    parser.resume();
-                }
-            },
-            complete: async () => {
-                try {
-                    await batchHandler.commit();
-                    await errorBatchHandler.commit();
-                    setProgress(prev => ({ ...prev, [tableName]: { processed: rowCounter, total: rowCounter, errors: errorCounter } }));
-                    addLog(`Finished importing ${tableName}: ${rowCounter} rows processed, ${errorCounter} errors.`, 'success');
-                    resolve();
-                } catch(err: any) {
-                    addLog(`Final commit failed for ${tableName}: ${err.message}`, 'error');
-                    reject(err);
-                }
-            },
-            error: (err: any) => {
-                addLog(`Parsing error for ${tableName}: ${err.message}`, 'error');
-                reject(err);
-            }
-        });
-    });
-  };
-
   const handleImportData = async () => {
     if (!allFilesSelected) {
-        toast({ title: "Faltan archivos", description: "Por favor, seleccione los 19 archivos CSV requeridos.", variant: "destructive" });
+        toast({ title: "Faltan archivos", description: `Por favor, seleccione los ${REQUIRED_TABLES.length} archivos CSV requeridos.`, variant: "destructive" });
         return;
     }
     setIsImporting(true);
     setLogs([]);
-    setProgress({});
-    addLog("Starting full database import...", 'info');
+    setProgress(REQUIRED_TABLES.reduce((acc, tbl) => ({ ...acc, [tbl]: { processed: 0, total: 0, errors: 0, status: 'pending' } }), {}));
+    addLog("Iniciando importación completa de la base de datos...", 'info');
 
     try {
-        const memoryMaps = {
-            provincias: new Map<string, any>(),
-            departamentos: new Map<string, any>(),
-            ciudades: new Map<string, any>(),
-            fueros: new Map<string, any>(),
-            juzgados: new Map<string, any>(),
-            usuarios: new Map<string, any>(),
-            votos: new Map<string, any>(),
+        const memoryMaps: Record<string, Map<string, any>> = {
+            provincias: new Map(),
+            departamentos: new Map(),
+            ciudades: new Map(),
+            juzgados: new Map(),
+            fueros: new Map(),
         };
 
-        // Import catalogs first to build in-memory maps for denormalization
-        for (const tableName of ['provincias', 'departamentos', 'ciudades', 'fueros', 'usuarios', 'votos']) {
-            if (files[tableName]) {
-                addLog(`Building in-memory map for ${tableName}...`);
-                await new Promise<void>((resolve, reject) => {
-                    Papa.parse(files[tableName]!, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: (results) => {
-                            results.data.forEach((row: any) => {
-                                if (row.id && (memoryMaps as any)[tableName]) {
-                                    (memoryMaps as any)[tableName].set(String(row.id), row);
-                                }
-                            });
-                            addLog(`Map for ${tableName} created with ${(memoryMaps as any)[tableName].size} entries.`, 'success');
-                            resolve();
-                        },
-                        error: reject
-                    });
-                });
+        const mapBuilder = (tableName: string, file: File, key: string = 'id') => new Promise<void>((resolve, reject) => {
+            addLog(`Creando mapa en memoria para ${tableName}...`);
+            const map = memoryMaps[tableName];
+            let count = 0;
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                worker: false,
+                step: (results) => {
+                    const row = results.data as any;
+                    if(row[key]) {
+                        map.set(String(row[key]), row);
+                        count++;
+                    }
+                },
+                complete: () => {
+                    addLog(`Mapa para ${tableName} creado con ${count} entradas.`, 'success');
+                    resolve();
+                },
+                error: (err) => {
+                    addLog(`Error creando mapa para ${tableName}: ${err.message}`, 'error');
+                    reject(err);
+                }
+            });
+        });
+        
+        await mapBuilder('provincias', files.provincias!);
+        await mapBuilder('departamentos', files.departamentos!);
+        await mapBuilder('ciudades', files.ciudades!);
+        await mapBuilder('fueros', files.fueros!);
+
+        // Import process in order
+        for (const tableName of REQUIRED_TABLES) {
+            const file = files[tableName];
+            if (!file) {
+                addLog(`Archivo para la tabla ${tableName} no encontrado. Saltando...`, 'warn');
+                continue;
+            }
+
+            let onData = (row: any) => row;
+            let getId = (row: any) => String(row.id);
+
+            if (tableName === 'juzgados') {
+                onData = (row, maps) => {
+                    const ciudad = maps.ciudades.get(row.id_ciudad);
+                    const departamento = maps.departamentos.get(row.id_departamento);
+                    const provincia = ciudad ? maps.provincias.get(ciudad.id_provincia) : null;
+                    return {
+                        ...row,
+                        provinciaId: provincia?.id || null,
+                        provinciaNombre: provincia?.nombre || null,
+                        departamentoId: departamento?.id || null,
+                        departamentoNombre: departamento?.nombre || null,
+                    };
+                }
+            } else if (tableName === 'fueros_x_juzgados') {
+                 onData = (row, maps) => {
+                    const juzgado = memoryMaps.juzgados.get(row.id_juzgado); // Needs juzgados to be mapped first.
+                    const fuero = maps.fueros.get(row.id_fuero);
+                    return {
+                      ...row,
+                      juzgadoNombre: juzgado?.nombre || null,
+                      fueroNombre: fuero?.nombre || null,
+                    }
+                 };
+                 getId = (row: any) => `${row.id_juzgado}_${row.id_fuero}`;
+            }
+
+            await genericImport(tableName, file, memoryMaps, onData, getId);
+
+            // If the current table is one that others depend on for denormalization, build its map now.
+            if(tableName === 'juzgados') {
+              await mapBuilder('juzgados', files.juzgados!);
             }
         }
 
-        // Now import tables in order, using denormalization where needed
-        await genericImport('categorias', files.categorias!);
-        await genericImport('permisos', files.permisos!);
-        await genericImport('administradores', files.administradores!);
-        await genericImport('dependencias', files.dependencias!);
-
-        // Special handling for JUZGADOS with denormalization
-        addLog(`Starting import for table: juzgados (with denormalization)`);
-        const juzgadosBatch = new FirestoreBatchHandler(firestore);
-        let juzgadosCount = 0;
-        await new Promise<void>((resolve, reject) => {
-             Papa.parse(files.juzgados!, {
-                header: true, skipEmptyLines: true, worker: false,
-                step: async (row: ParseResult<any>, parser) => {
-                    parser.pause();
-                    const juzgado = row.data;
-                    const ciudad = memoryMaps.ciudades.get(juzgado.id_ciudad);
-                    const departamento = ciudad ? memoryMaps.departamentos.get(ciudad.id_provincia) : null;
-                    const provincia = departamento ? memoryMaps.provincias.get(departamento.id_provincia) : null;
-
-                    const docData = {
-                        ...juzgado,
-                        provinciaNombre: provincia?.nombre || 'N/A',
-                        departamentoNombre: departamento?.nombre || 'N/A',
-                        ciudadNombre: ciudad?.nombre || 'N/A'
-                    };
-                    memoryMaps.juzgados.set(String(juzgado.id), docData); // Add to map for later use
-                    await juzgadosBatch.add(doc(firestore, 'juzgados', String(juzgado.id)), docData);
-                    juzgadosCount++;
-                    if(juzgadosCount % 100 === 0) setProgress(p => ({...p, juzgados: { processed: juzgadosCount, total: 0, errors: 0}}));
-                    parser.resume();
-                },
-                complete: async () => {
-                    await juzgadosBatch.commit();
-                    setProgress(p => ({...p, juzgados: { processed: juzgadosCount, total: juzgadosCount, errors: 0}}));
-                    addLog(`Finished importing juzgados: ${juzgadosCount} rows.`, 'success');
-                    resolve();
-                },
-                error: reject
-            });
-        });
-
-        // Continue with other tables
-        await genericImport('fueros_x_juzgados', files.fueros_x_juzgados!);
-        await genericImport('matriculas', files.matriculas!);
-        await genericImport('votantes', files.votantes!);
-        await genericImport('votantes_temp', files.votantes_temp!);
-        await genericImport('votos_comentarios', files.votos_comentarios!);
-        await genericImport('comentarios', files.comentarios!);
-        await genericImport('ranking_general', files.ranking_general!);
-        await genericImport('historico', files.historico!);
-
-        addLog("Data import process finished.", 'success');
+        addLog("Proceso de importación de datos finalizado.", 'success');
         toast({ title: 'Importación Completa', description: 'Todos los archivos han sido procesados.' });
 
     } catch (e: any) {
-      console.error("Error during data import:", e);
-      addLog(`CRITICAL ERROR: ${e.message}`, 'error');
+      console.error("Error crítico durante la importación:", e);
+      addLog(`ERROR CRÍTICO: ${e.message}`, 'error');
       toast({ title: 'Error Crítico en la Importación', description: e.message, variant: 'destructive' });
     } finally {
       setIsImporting(false);
@@ -307,53 +295,55 @@ export default function AdminCourthousesPage() {
 
   const handleDeleteAllData = async () => {
     setIsDeleting(true);
-    addLog('Starting deletion of all imported collections...', 'info');
+    addLog('Iniciando borrado de todas las colecciones importadas...', 'info');
 
-    for (const tableName of REQUIRED_TABLES) {
-        addLog(`Deleting collection: ${tableName}...`);
+    const collectionsToDelete = [...REQUIRED_TABLES, 'import_errors'];
+
+    for (const tableName of collectionsToDelete) {
+        addLog(`Eliminando colección: ${tableName}...`);
         try {
-            const querySnapshot = await getDocs(collection(firestore, tableName));
+            const collectionRef = collection(firestore, tableName);
+            const querySnapshot = await getDocs(collectionRef);
             if (querySnapshot.empty) {
-                addLog(`Collection ${tableName} is already empty.`, 'info');
+                addLog(`La colección ${tableName} ya está vacía.`, 'info');
                 continue;
             }
             let deletedCount = 0;
             const batchHandler = new FirestoreBatchHandler(firestore);
             
             for(const docSnapshot of querySnapshot.docs) {
-                batchHandler.add(docSnapshot.ref, {}); // using add with an empty object on a delete-only batch is a trick
-                (batchHandler as any).batch.delete(docSnapshot.ref); // direct access to add delete op
+                await batchHandler.addDelete(docSnapshot.ref);
                 deletedCount++;
             }
-            await batchHandler.commit();
+            await batchHandler.commit(); // Commit any remaining deletes
 
-            addLog(`Successfully deleted ${deletedCount} documents from ${tableName}.`, 'success');
+            addLog(`Se eliminaron ${deletedCount} documentos de ${tableName}.`, 'success');
         } catch (e: any) {
-            addLog(`Error deleting from ${tableName}: ${e.message}`, 'error');
+            addLog(`Error al eliminar de ${tableName}: ${e.message}`, 'error');
         }
     }
     
-    addLog('All specified collections have been cleared.', 'success');
-    toast({ title: 'Base de Datos Limpia!', description: 'Se han eliminado todas las colecciones importadas.' });
+    addLog('Todas las colecciones especificadas han sido limpiadas.', 'success');
+    toast({ title: 'Base de Datos Limpia', description: 'Se han eliminado todas las colecciones importadas.' });
     setIsDeleting(false);
     setDeleteConfirmText('');
   };
 
-  const FileInputBox = ({ id, label }: { id: string, label: string }) => (
+  const FileInputBox = ({ id }: { id: string }) => (
     <div
-      className={`relative border-2 border-dashed rounded-lg p-4 flex flex-col justify-center items-center text-center cursor-pointer transition-colors ${files[id] ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+      className={`relative border-2 border-dashed rounded-lg p-3 flex flex-col justify-center items-center text-center cursor-pointer transition-colors ${files[id] ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
       onClick={() => fileInputRefs.current[id]?.click()}
     >
       <input type="file" accept=".csv" ref={el => fileInputRefs.current[id] = el} onChange={(e) => handleFileChange(e, id)} className="hidden" />
       {files[id] ? (
         <>
-          <FileCheck className="h-8 w-8 text-primary mb-1" />
+          <FileCheck className="h-6 w-6 text-primary mb-1" />
           <p className="font-semibold text-primary text-xs truncate max-w-full" title={files[id]?.name}>{files[id]?.name}</p>
         </>
       ) : (
         <>
-          <Upload className="h-8 w-8 text-muted-foreground mb-1" />
-          <p className="font-semibold text-sm">{label}</p>
+          <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+          <p className="font-semibold text-xs">{id}</p>
           <p className="text-xs text-muted-foreground">(.csv)</p>
         </>
       )}
@@ -368,13 +358,13 @@ export default function AdminCourthousesPage() {
         <CardHeader>
           <CardTitle>Carga Masiva de Datos desde CSV</CardTitle>
           <CardDescription>
-            Importe la base de datos completa subiendo los 19 archivos CSV correspondientes. El proceso se realizar por lotes para manejar grandes volúmenes de datos.
+            Importe la base de datos completa subiendo los 19 archivos CSV correspondientes. El proceso se realiza por lotes para manejar grandes volúmenes de datos de forma segura.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {REQUIRED_TABLES.map(table => (
-              <FileInputBox key={table} id={table} label={table} />
+              <FileInputBox key={table} id={table} />
             ))}
           </div>
           
@@ -385,32 +375,37 @@ export default function AdminCourthousesPage() {
               ) : (
                 <Database className="mr-2 h-5 w-5" />
               )}
-              Importar Base Completa (19 tablas)
+              Importar Base Completa ({REQUIRED_TABLES.length} tablas)
             </Button>
           </div>
 
            {(isImporting || logs.length > 0) && (
             <div className="space-y-4 pt-4">
                 <h3 className="font-semibold">Progreso de Importación</h3>
-                {Object.entries(progress).map(([table, p]) => (
-                    <div key={table}>
-                        <div className="flex justify-between text-sm mb-1">
-                            <span>{table}</span>
-                            <span className="text-muted-foreground">{p.processed} / {p.total > 0 ? p.total : '?'} (Errores: {p.errors})</span>
+                 <div className="space-y-2">
+                    {Object.entries(progress).map(([table, p]) => (
+                        <div key={table}>
+                            <div className="flex justify-between text-sm mb-1">
+                                <span className="font-medium">{table}</span>
+                                <span className={`text-xs font-mono ${p.status === 'done' ? 'text-green-600' : p.status === 'error' ? 'text-red-600' : 'text-muted-foreground'}`}>
+                                    {p.status.toUpperCase()} {p.errors > 0 ? `(${p.errors} errores)` : ''}
+                                </span>
+                            </div>
+                            <Progress value={p.total > 0 ? (p.processed / p.total) * 100 : (p.status === 'processing' ? 50 : 0)} />
                         </div>
-                        <Progress value={p.total > 0 ? (p.processed / p.total) * 100 : 0} />
-                    </div>
-                ))}
-                 <h3 className="font-semibold pt-4">Registros</h3>
-                 <ScrollArea className="h-48 w-full rounded-md border p-4 font-mono text-xs">
+                    ))}
+                 </div>
+                 <h3 className="font-semibold pt-4">Registros de Actividad</h3>
+                 <ScrollArea className="h-64 w-full rounded-md border p-4 font-mono text-xs bg-muted/20">
                     {logs.map((log, i) => (
                         <p key={i} className={
-                            log.type === 'error' ? 'text-red-500' :
-                            log.type === 'success' ? 'text-green-500' : ''
+                            log.type === 'error' ? 'text-red-600' :
+                            log.type === 'success' ? 'text-green-600' :
+                            log.type === 'warn' ? 'text-yellow-600' : ''
                         }>
                             {log.message}
                         </p>
-                    ))}
+                    )).reverse()}
                  </ScrollArea>
             </div>
           )}
@@ -421,14 +416,14 @@ export default function AdminCourthousesPage() {
           <CardHeader>
               <CardTitle className="text-destructive">Zona de Peligro</CardTitle>
               <CardDescription>
-                  Esta acción eliminará permanentemente todos los datos de las 19 colecciones importadas. Úselo para limpiar la base de datos antes de una nueva carga.
+                  Esta acción eliminará permanentemente todos los datos de las {REQUIRED_TABLES.length} colecciones importadas y los registros de errores. Úselo para limpiar la base de datos antes de una nueva carga.
               </CardDescription>
           </CardHeader>
           <CardContent>
               {isDeleting && (
                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Eliminando datos... Por favor, espere.</span>
+                    <span>Eliminando datos... Esto puede tardar varios minutos. Por favor, espere.</span>
                 </div>
               )}
           </CardContent>
@@ -444,7 +439,7 @@ export default function AdminCourthousesPage() {
                       <AlertDialogHeader>
                           <AlertDialogTitle>¿Está absolutamente seguro?</AlertDialogTitle>
                           <AlertDialogDescription>
-                              Esta acción es irreversible. Se eliminarán permanentemente todos los documentos de las 19 colecciones importadas. Para confirmar, escriba <strong>BORRAR</strong> en el campo de abajo.
+                              Esta acción es irreversible. Se eliminarán permanentemente todos los documentos de las {REQUIRED_TABLES.length} colecciones importadas y la colección `import_errors`. Para confirmar, escriba <strong>BORRAR</strong> en el campo de abajo.
                           </AlertDialogDescription>
                            <Input 
                             value={deleteConfirmText}
