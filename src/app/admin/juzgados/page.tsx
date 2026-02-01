@@ -164,7 +164,6 @@ export default function AdminCourthousesPage() {
         Papa.parse(files.juzgados!, {
           header: true,
           skipEmptyLines: true,
-          worker: true,
           step: async (results, parser) => {
             parser.pause(); 
             
