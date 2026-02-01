@@ -167,5 +167,41 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow read, update, delete: if false;
     }
+    
+    // --- NEW: Rules for bulk data import by admin ---
+    
+    // Public data collections that are only writable by admins.
+    match /provincias/{docId}         { allow read: if true; allow write: if isAdmin(); }
+    match /departamentos/{docId}      { allow read: if true; allow write: if isAdmin(); }
+    match /ciudades/{docId}           { allow read: if true; allow write: if isAdmin(); }
+    match /categorias/{docId}         { allow read: if true; allow write: if isAdmin(); }
+    match /fueros/{docId}             { allow read: if true; allow write: if isAdmin(); }
+    match /dependencias/{docId}       { allow read: if true; allow write: if isAdmin(); }
+    match /ranking_general/{docId}    { allow read: if true; allow write: if isAdmin(); }
+    match /historico/{docId}          { allow read: if true; allow write: if isAdmin(); }
+
+    // Rule for the 'juzgados' table being imported. Mirrors 'courthouses'.
+    match /juzgados/{juzgadoId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Join table for fueros and juzgados
+    match /fueros_x_juzgados/{docId}  { allow read: if true; allow write: if isAdmin(); }
+
+    // Collections that only admins should be able to write to during import.
+    // Read access is also limited to admins for these potentially sensitive/legacy tables.
+    match /usuarios/{docId}           { allow read, write: if isAdmin(); }
+    match /administradores/{docId}    { allow read, write: if isAdmin(); }
+    match /comentarios/{docId}        { allow read, write: if isAdmin(); }
+    match /matriculas/{docId}         { allow read, write: if isAdmin(); }
+    match /permisos/{docId}           { allow read, write: if isAdmin(); }
+    match /votantes/{docId}           { allow read, write: if isAdmin(); }
+    match /votantes_temp/{docId}      { allow read, write: if isAdmin(); }
+    match /votos/{docId}              { allow read, write: if isAdmin(); }
+    match /votos_comentarios/{docId}  { allow read, write: if isAdmin(); }
+
+    // Collection for logging import errors
+    match /import_errors/{docId}      { allow read, write: if isAdmin(); }
   }
 }
