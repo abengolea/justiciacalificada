@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -31,11 +30,26 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-const REQUIRED_TABLES = [
-  'provincias', 'departamentos', 'ciudades', 'juzgados', 'fueros', 
-  'fueros_x_juzgados', 'categorias', 'permisos', 'administradores', 'usuarios', 
-  'matriculas', 'votantes', 'votantes_temp', 'votos', 'votos_comentarios', 
-  'comentarios', 'dependencias', 'ranking_general', 'historico'
+const orderedTables = [
+  'provincias',
+  'departamentos',
+  'ciudades',
+  'juzgados',
+  'fueros',
+  'fueros_x_juzgados',
+  'categorias',
+  'permisos',
+  'administradores',
+  'usuarios',
+  'matriculas',
+  'votantes',
+  'votantes_temp',
+  'votos',
+  'votos_comentarios',
+  'comentarios',
+  'dependencias',
+  'ranking_general',
+  'historico',
 ];
 
 type FileState = { [key: string]: File | null };
@@ -96,7 +110,7 @@ class FirestoreBatchHandler {
 
 export default function AdminDatabasePage() {
   const [files, setFiles] = useState<FileState>(
-    REQUIRED_TABLES.reduce((acc, tbl) => ({ ...acc, [tbl]: null }), {})
+    orderedTables.reduce((acc, tbl) => ({ ...acc, [tbl]: null }), {})
   );
   const [isImporting, setIsImporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -121,7 +135,7 @@ export default function AdminDatabasePage() {
     setFiles(prev => ({ ...prev, [tableName]: file }));
   };
 
-  const allFilesSelected = REQUIRED_TABLES.every(table => files[table]);
+  const allFilesSelected = orderedTables.every(table => files[table]);
 
   const genericImport = (
     tableName: string, 
@@ -143,7 +157,7 @@ export default function AdminDatabasePage() {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        worker: false,
+        worker: false, // Must be false to use pause/resume
         step: async (results: ParseResult<any>, parser) => {
           parser.pause();
           try {
@@ -200,12 +214,12 @@ export default function AdminDatabasePage() {
 
   const handleImportData = async () => {
     if (!allFilesSelected) {
-        toast({ title: "Faltan archivos", description: `Por favor, seleccione los ${REQUIRED_TABLES.length} archivos CSV requeridos.`, variant: "destructive" });
+        toast({ title: "Faltan archivos", description: `Por favor, seleccione los ${orderedTables.length} archivos CSV requeridos.`, variant: "destructive" });
         return;
     }
     setIsImporting(true);
     setLogs([]);
-    setProgress(REQUIRED_TABLES.reduce((acc, tbl) => ({ ...acc, [tbl]: { processed: 0, total: 0, errors: 0, status: 'pending' } }), {}));
+    setProgress(orderedTables.reduce((acc, tbl) => ({ ...acc, [tbl]: { processed: 0, total: 0, errors: 0, status: 'pending' } }), {}));
     addLog("Iniciando importación completa de la base de datos...", 'info');
 
     try {
@@ -227,8 +241,9 @@ export default function AdminDatabasePage() {
                 worker: false,
                 step: (results) => {
                     const row = results.data as any;
-                    if(row[key]) {
-                        map.set(String(row[key]), row);
+                    const idKey = Object.keys(row).find(k => k.toLowerCase() === key);
+                    if(idKey && row[idKey]) {
+                        map.set(String(row[idKey]), row);
                         count++;
                     }
                 },
@@ -249,7 +264,7 @@ export default function AdminDatabasePage() {
         await mapBuilder('fueros', files.fueros!);
 
         // Import process in order
-        for (const tableName of REQUIRED_TABLES) {
+        for (const tableName of orderedTables) {
             const file = files[tableName];
             if (!file) {
                 addLog(`Archivo para la tabla ${tableName} no encontrado. Saltando...`, 'warn');
@@ -262,19 +277,22 @@ export default function AdminDatabasePage() {
             if (tableName === 'juzgados') {
                 onData = (row, maps) => {
                     const ciudad = maps.ciudades.get(row.id_ciudad);
-                    const departamento = maps.departamentos.get(row.id_departamento);
-                    const provincia = ciudad ? maps.provincias.get(ciudad.id_provincia) : null;
+                    const departamento = ciudad ? maps.departamentos.get(ciudad.id_departamento) : null;
+                    const provincia = departamento ? maps.provincias.get(departamento.id_provincia) : null;
+                    
                     return {
                         ...row,
                         provinciaId: provincia?.id || null,
                         provinciaNombre: provincia?.nombre || null,
                         departamentoId: departamento?.id || null,
                         departamentoNombre: departamento?.nombre || null,
+                        ciudadId: ciudad?.id || null,
+                        ciudadNombre: ciudad?.nombre || null,
                     };
                 }
             } else if (tableName === 'fueros_x_juzgados') {
                  onData = (row, maps) => {
-                    const juzgado = memoryMaps.juzgados.get(row.id_juzgado); // Needs juzgados to be mapped first.
+                    const juzgado = memoryMaps.juzgados.get(row.id_juzgado);
                     const fuero = maps.fueros.get(row.id_fuero);
                     return {
                       ...row,
@@ -297,8 +315,10 @@ export default function AdminDatabasePage() {
         toast({ title: 'Importación Completa', description: 'Todos los archivos han sido procesados.' });
 
     } catch (e: any) {
-      addLog(`ERROR CRÍTICO: ${e.message}`, 'error');
-      toast({ title: 'Error Crítico en la Importación', description: e.message, variant: 'destructive' });
+        if (!(e instanceof FirestorePermissionError)) {
+            addLog(`ERROR CRÍTICO: ${e.message}`, 'error');
+            toast({ title: 'Error Crítico en la Importación', description: e.message, variant: 'destructive' });
+        }
     } finally {
       setIsImporting(false);
     }
@@ -308,14 +328,15 @@ export default function AdminDatabasePage() {
     setIsDeleting(true);
     addLog('Iniciando borrado de todas las colecciones importadas...', 'info');
 
-    const collectionsToDelete = [...REQUIRED_TABLES, 'import_errors'];
-    const batchHandler = new FirestoreBatchHandler(firestore);
+    const collectionsToDelete = [...orderedTables, 'import_errors'];
 
-    for (const tableName of collectionsToDelete) {
-        addLog(`Eliminando colección: ${tableName}...`);
-        batchHandler.setCurrentCollection(tableName);
-        const collectionRef = collection(firestore, tableName);
-        try {
+    try {
+        for (const tableName of collectionsToDelete) {
+            addLog(`Eliminando colección: ${tableName}...`);
+            const collectionRef = collection(firestore, tableName);
+            const batchHandler = new FirestoreBatchHandler(firestore);
+            batchHandler.setCurrentCollection(tableName);
+            
             const querySnapshot = await getDocs(collectionRef);
             if (querySnapshot.empty) {
                 addLog(`La colección ${tableName} ya está vacía.`, 'info');
@@ -330,27 +351,26 @@ export default function AdminDatabasePage() {
             await batchHandler.commit(); // Commit any remaining deletes
 
             addLog(`Se eliminaron ${deletedCount} documentos de ${tableName}.`, 'success');
-        } catch (e: any) {
-            if (e.code === 'permission-denied') {
-                 const permissionError = new FirestorePermissionError({
-                    path: collectionRef.path,
-                    operation: 'list',
-                 });
-                 errorEmitter.emit('permission-error', permissionError);
-                 addLog(`Error de permisos al leer la colección '${tableName}'. No se puede continuar con el borrado.`, 'error');
-            } else {
-                 addLog(`Error al eliminar de ${tableName}: ${e.message}`, 'error');
-            }
-            setIsDeleting(false);
-            toast({ title: 'Error en el Borrado', description: `No se pudo completar el borrado para la tabla ${tableName}.`, variant: 'destructive' });
-            return;
         }
+        
+        addLog('Todas las colecciones especificadas han sido limpiadas.', 'success');
+        toast({ title: 'Base de Datos Limpia', description: 'Se han eliminado todas las colecciones importadas.' });
+    } catch (e: any) {
+        // The batchHandler will emit its own contextual error.
+        // This catch block is primarily for errors during getDocs.
+        if (!(e instanceof FirestorePermissionError)) {
+            const permissionError = new FirestorePermissionError({
+                path: '(unknown collection during delete)',
+                operation: 'list',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            addLog(`Error al acceder a las colecciones para el borrado.`, 'error');
+            toast({ title: 'Error en el Borrado', description: `No se pudo completar el borrado. Verifique los permisos de lectura.`, variant: 'destructive' });
+        }
+    } finally {
+        setIsDeleting(false);
+        setDeleteConfirmText('');
     }
-    
-    addLog('Todas las colecciones especificadas han sido limpiadas.', 'success');
-    toast({ title: 'Base de Datos Limpia', description: 'Se han eliminado todas las colecciones importadas.' });
-    setIsDeleting(false);
-    setDeleteConfirmText('');
   };
 
   const FileInputBox = ({ id }: { id: string }) => (
@@ -382,12 +402,12 @@ export default function AdminDatabasePage() {
         <CardHeader>
           <CardTitle>Carga Masiva de Datos desde CSV</CardTitle>
           <CardDescription>
-            Importe la base de datos completa subiendo los 19 archivos CSV correspondientes. El proceso se realiza por lotes para manejar grandes volúmenes de datos de forma segura.
+            Importe la base de datos completa subiendo los {orderedTables.length} archivos CSV correspondientes. El proceso se realiza por lotes para manejar grandes volúmenes de datos de forma segura.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {REQUIRED_TABLES.map(table => (
+            {orderedTables.map(table => (
               <FileInputBox key={table} id={table} />
             ))}
           </div>
@@ -399,7 +419,7 @@ export default function AdminDatabasePage() {
               ) : (
                 <Database className="mr-2 h-5 w-5" />
               )}
-              Importar Base Completa ({REQUIRED_TABLES.length} tablas)
+              Importar Base Completa ({orderedTables.length} tablas)
             </Button>
           </div>
 
@@ -440,7 +460,7 @@ export default function AdminDatabasePage() {
           <CardHeader>
               <CardTitle className="text-destructive">Zona de Peligro</CardTitle>
               <CardDescription>
-                  Esta acción eliminará permanentemente todos los datos de las {REQUIRED_TABLES.length} colecciones importadas y los registros de errores. Úselo para limpiar la base de datos antes de una nueva carga.
+                  Esta acción eliminará permanentemente todos los datos de las {orderedTables.length} colecciones importadas y los registros de errores. Úselo para limpiar la base de datos antes de una nueva carga.
               </CardDescription>
           </CardHeader>
           <CardContent>
@@ -463,7 +483,7 @@ export default function AdminDatabasePage() {
                       <AlertDialogHeader>
                           <AlertDialogTitle>¿Está absolutamente seguro?</AlertDialogTitle>
                           <AlertDialogDescription>
-                              Esta acción es irreversible. Se eliminarán permanentemente todos los documentos de las {REQUIRED_TABLES.length} colecciones importadas y la colección `import_errors`. Para confirmar, escriba <strong>BORRAR</strong> en el campo de abajo.
+                              Esta acción es irreversible. Se eliminarán permanentemente todos los documentos de las {orderedTables.length} colecciones importadas y la colección `import_errors`. Para confirmar, escriba <strong>BORRAR</strong> en el campo de abajo.
                           </AlertDialogDescription>
                            <Input 
                             value={deleteConfirmText}
@@ -489,3 +509,5 @@ export default function AdminDatabasePage() {
     </div>
   );
 }
+
+    
