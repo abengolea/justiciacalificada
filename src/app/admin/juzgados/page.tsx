@@ -103,8 +103,10 @@ export default function AdminCourthousesPage() {
   const fixEncoding = (str: string): string => {
     if (!str) return '';
     try {
+        // Attempt to decode URI component after escaping. This handles many common encoding issues.
         return decodeURIComponent(escape(str));
     } catch (e) {
+        // If it fails, return the original string. It might already be correctly formatted.
         return str;
     }
   };
@@ -138,104 +140,80 @@ export default function AdminCourthousesPage() {
     setError(null);
 
     try {
-      setStatusText('Analizando archivos de referencia (provincias, departamentos, ciudades)...');
-      const [provinciasData, departamentosData, ciudadesData] = await Promise.all([
+      setStatusText('Analizando archivos de referencia...');
+      setProgress(5);
+      const [provinciasData, departamentosData, ciudadesData, juzgadosRaw] = await Promise.all([
         parseFile<ProvinciaRaw>(files.provincias!),
         parseFile<DepartamentoRaw>(files.departamentos!),
         parseFile<CiudadRaw>(files.ciudades!),
+        parseFile<JuzgadoRaw>(files.juzgados!),
       ]);
+      
       setProgress(10);
       setStatusText('Construyendo mapas de relaciones...');
-      
       const provinciasMap = new Map(provinciasData.map(p => [p.id, fixEncoding(p.nombre)]));
       const departamentosMap = new Map(departamentosData.map(d => [d.id, { nombre: fixEncoding(d.nombre), id_provincia: d.id_provincia }]));
       const ciudadesMap = new Map(ciudadesData.map(c => [c.id, { nombre: fixEncoding(c.nombre), idprovincia: c.idprovincia }]));
       
+      const totalJuzgados = juzgadosRaw.length;
+      setStatusText(`Se encontraron ${totalJuzgados} juzgados. Comenzando carga a la base de datos...`);
       setProgress(20);
 
-      await new Promise<void>((resolve, reject) => {
-        let batch = writeBatch(firestore);
-        let batchCounter = 0;
-        let totalUploaded = 0;
-        const BATCH_SIZE = 499;
+      let batch = writeBatch(firestore);
+      let batchCounter = 0;
+      const BATCH_SIZE = 499;
 
-        setStatusText('Comenzando a procesar el archivo de juzgados...');
+      for (let i = 0; i < totalJuzgados; i++) {
+        const juzgado = juzgadosRaw[i];
 
-        Papa.parse(files.juzgados!, {
-          header: true,
-          skipEmptyLines: true,
-          step: async (results, parser) => {
-            parser.pause(); 
-            
-            try {
-                const juzgado = results.data as JuzgadoRaw;
-                
-                if (!juzgado.nombre || juzgado.nombre.trim() === '') {
-                    parser.resume();
-                    return;
-                }
-                
-                totalUploaded++;
-                setStatusText(`Procesando juzgado N° ${totalUploaded}...`);
+        if (!juzgado.nombre || juzgado.nombre.trim() === '') {
+            continue;
+        }
 
-                const departamento = departamentosMap.get(juzgado.id_departamento);
-                const provinciaId = departamento?.id_provincia;
-                const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
-                const ciudadData = ciudadesMap.get(juzgado.id_ciudad);
-                const ciudadNombre = ciudadData?.nombre ?? 'N/A';
-
-                const courthouseDoc: CourthouseFinal = {
-                    nombre: fixEncoding(juzgado.nombre),
-                    dependencia: provinciaNombre,
-                    ciudad: ciudadNombre,
-                    fuero: fixEncoding(juzgado.fuero || ''),
-                    instancia: fixEncoding(juzgado.instancia || ''),
-                    direccion: fixEncoding(juzgado.direccion || ''),
-                    telefono: fixEncoding(juzgado.telefono || ''),
-                };
-
-                const docRef = doc(collection(firestore, 'courthouses'));
-                batch.set(docRef, courthouseDoc);
-                batchCounter++;
-
-                if (batchCounter >= BATCH_SIZE) {
-                    await batch.commit();
-                    setStatusText(`Cargados ${totalUploaded} juzgados...`);
-                    const currentProgress = 20 + (totalUploaded / (files.juzgados?.size || 1)) * 80;
-                    setProgress(currentProgress);
-                    batch = writeBatch(firestore);
-                    batchCounter = 0;
-                     await new Promise(r => setTimeout(r, 50));
-                }
-            } catch (stepError) {
-                console.error("Error in step processing:", stepError);
-            } finally {
-                parser.resume();
+        const departamento = departamentosMap.get(juzgado.id_departamento);
+        const provinciaId = departamento?.id_provincia;
+        const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
+        
+        let ciudadNombre = 'N/A';
+        if(juzgado.id_ciudad) {
+            const ciudadData = ciudadesMap.get(juzgado.id_ciudad);
+            if (ciudadData) {
+                ciudadNombre = ciudadData.nombre;
             }
-          },
-          complete: async () => {
-            try {
-              if (batchCounter > 0) {
-                setStatusText(`Cargando los últimos ${batchCounter} juzgados...`);
-                await batch.commit();
-              }
-              setProgress(100);
-              setStatusText(`¡Carga Completa! Se procesaron y cargaron ${totalUploaded} juzgados.`);
-              toast({
-                title: '¡Carga Completa!',
-                description: `Se han cargado ${totalUploaded} juzgados en la base de datos.`,
-                variant: 'default',
-              });
-              resolve();
-            } catch (finalCommitError) {
-              reject(finalCommitError);
-            }
-          },
-          error: (err: any) => {
-            console.error(`PapaParse streaming error for juzgados.csv:`, err);
-            reject(new Error(`Error procesando el archivo de juzgados: ${err.message}`));
-          }
-        });
+        }
+
+        const courthouseDoc: CourthouseFinal = {
+            nombre: fixEncoding(juzgado.nombre),
+            dependencia: provinciaNombre,
+            ciudad: ciudadNombre,
+            fuero: fixEncoding(juzgado.fuero || ''),
+            instancia: fixEncoding(juzgado.instancia || ''),
+            direccion: fixEncoding(juzgado.direccion || ''),
+            telefono: fixEncoding(juzgado.telefono || ''),
+        };
+
+        const docRef = doc(collection(firestore, 'courthouses'));
+        batch.set(docRef, courthouseDoc);
+        batchCounter++;
+
+        if (batchCounter >= BATCH_SIZE || i === totalJuzgados - 1) {
+            await batch.commit();
+            const uploadedCount = i + 1;
+            setStatusText(`Cargando... ${uploadedCount} de ${totalJuzgados} juzgados.`);
+            const currentProgress = 20 + (uploadedCount / totalJuzgados) * 80;
+            setProgress(currentProgress);
+            batch = writeBatch(firestore);
+            batchCounter = 0;
+            await new Promise(r => setTimeout(r, 50));
+        }
+      }
+
+      setProgress(100);
+      setStatusText(`¡Carga Completa! Se procesaron y cargaron ${totalJuzgados} juzgados.`);
+      toast({
+        title: '¡Carga Completa!',
+        description: `Se han cargado ${totalJuzgados} juzgados en la base de datos.`,
+        variant: 'default',
       });
         
     } catch (e: any) {
@@ -288,6 +266,7 @@ export default function AdminCourthousesPage() {
           setDeleteStatusText(`Eliminando ${deletedCounter} de ${totalDocs} juzgados...`);
           batch = writeBatch(firestore);
           batchCounter = 0;
+          await new Promise(r => setTimeout(r, 50));
         }
       }
 
