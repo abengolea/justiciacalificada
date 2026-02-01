@@ -50,7 +50,7 @@ export default function CourthouseList() {
   );
 
   const fueros = useMemo(
-    () => ["all", ...Array.from(new Set((courthouses || []).map((c) => c.fuero))).sort()],
+    () => ["all", ...Array.from(new Set((courthouses || []).map((c) => c.fuero).filter(Boolean))).sort()],
     [courthouses]
   );
 
