@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -26,34 +25,26 @@ interface FileState {
 
 type TableName = keyof FileState;
 
-interface Provincia {
-  id: string;
-  nombre: string;
-}
-
-interface Departamento {
-  id: string;
-  nombre: string;
-  id_provincia: string;
-}
-
-interface Ciudad {
-  id: string;
-  nombre: string;
-  idprovincia: string; 
-}
-
+// Raw data structures from CSVs
+interface ProvinciaRaw { id: string; nombre: string; }
+interface DepartamentoRaw { id:string; nombre: string; id_provincia: string; }
+interface CiudadRaw { id: string; nombre: string; idprovincia: string; }
 interface JuzgadoRaw {
     id: string;
     nombre: string;
     id_departamento: string;
     id_ciudad: string;
-    [key: string]: any; // Allow other fields
+    fuero?: string;
+    instancia?: string;
+    direccion?: string;
+    telefono?: string;
+    [key: string]: any;
 }
 
+// Final structure for Firestore
 interface CourthouseFinal {
     nombre: string;
-    dependencia: string; 
+    dependencia: string;
     ciudad: string;
     fuero: string;
     instancia: string;
@@ -94,18 +85,14 @@ export default function AdminCourthousesPage() {
   const fixEncoding = (str: string): string => {
     if (!str) return '';
     try {
-      // Attempt to fix common double-encoding issues.
-      return decodeURIComponent(escape(str));
+        // This is a common pattern to fix double-encoded UTF-8 strings.
+        return decodeURIComponent(escape(str));
     } catch (e) {
-      // Fallback for strings that are already correctly encoded or have other issues.
-      return str
-        .replace(/Ã³/g, 'ó').replace(/Ã±/g, 'ñ').replace(/Ã©/g, 'é')
-        .replace(/Ã¡/g, 'á').replace(/Ã­/g, 'í').replace(/Ãº/g, 'ú')
-        .replace(/Ã€/g, 'Á').replace(/Ã‰/g, 'É').replace(/Ã/g, 'Í')
-        .replace(/Ã“/g, 'Ó').replace(/Ãš/g, 'Ú').replace(/Â°/g, '°');
+        // Fallback for strings that are not double-encoded or have other issues.
+        return str;
     }
   };
-
+  
   const parseFile = <T,>(file: File): Promise<T[]> => {
     return new Promise((resolve, reject) => {
       Papa.parse(file, {
@@ -114,7 +101,7 @@ export default function AdminCourthousesPage() {
         complete: (results) => {
           if (results.errors.length) {
             console.error(`Errors parsing ${file.name}:`, results.errors);
-            reject(new Error(`Error analizando ${file.name}. Revise el formato.`));
+            reject(new Error(`Error analizando ${file.name}. Revise el formato y la codificación (debe ser UTF-8).`));
           } else {
             resolve(results.data as T[]);
           }
@@ -135,42 +122,51 @@ export default function AdminCourthousesPage() {
     setError(null);
 
     try {
-      setStatusText('Analizando archivos de referencia...');
+      setStatusText('Analizando archivos de referencia (provincias, departamentos, ciudades)...');
       const [provinciasData, departamentosData, ciudadesData] = await Promise.all([
-        parseFile<Provincia>(files.provincias!),
-        parseFile<Departamento>(files.departamentos!),
-        parseFile<Ciudad>(files.ciudades!),
+        parseFile<ProvinciaRaw>(files.provincias!),
+        parseFile<DepartamentoRaw>(files.departamentos!),
+        parseFile<CiudadRaw>(files.ciudades!),
       ]);
       setProgress(10);
       setStatusText('Construyendo mapas de relaciones...');
       
       const provinciasMap = new Map(provinciasData.map(p => [p.id, fixEncoding(p.nombre)]));
       const departamentosMap = new Map(departamentosData.map(d => [d.id, { nombre: fixEncoding(d.nombre), id_provincia: d.id_provincia }]));
-      const ciudadesMap = new Map(ciudadesData.map(c => [c.id, fixEncoding(c.nombre)]));
+      const ciudadesMap = new Map(ciudadesData.map(c => [c.id, { nombre: fixEncoding(c.nombre), idprovincia: c.idprovincia }]));
       
       setProgress(20);
 
+      // --- True Streaming Logic ---
       await new Promise<void>((resolve, reject) => {
-        const courthousesToUpload: CourthouseFinal[] = [];
-        let rowCount = 0;
-        
+        let batch = writeBatch(firestore);
+        let batchCounter = 0;
+        let totalUploaded = 0;
+        const BATCH_SIZE = 499; // Firestore limit is 500 writes per batch.
+
+        setStatusText('Comenzando a procesar el archivo de juzgados...');
+
         Papa.parse(files.juzgados!, {
           header: true,
           skipEmptyLines: true,
-          worker: true, // Use a worker to avoid blocking UI
-          step: (results) => {
+          worker: true,
+          step: async (results, parser) => {
             const juzgado = results.data as JuzgadoRaw;
-            if (juzgado.nombre && juzgado.nombre.trim() !== '') {
-              rowCount++;
-              setStatusText(`Procesando ${rowCount} juzgados...`);
+            
+            if (!juzgado.nombre || juzgado.nombre.trim() === '') {
+                return; // Skip empty rows
+            }
+            
+            totalUploaded++;
+            setStatusText(`Procesando juzgado N° ${totalUploaded}...`);
 
-              const departamento = departamentosMap.get(juzgado.id_departamento);
-              const ciudad = ciudadesMap.get(juzgado.id_ciudad);
-              const provinciaId = departamento?.id_provincia;
-              const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
-              const ciudadNombre = ciudad || 'N/A';
+            const departamento = departamentosMap.get(juzgado.id_departamento);
+            const provinciaId = departamento?.id_provincia;
+            const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
+            const ciudadData = ciudadesMap.get(juzgado.id_ciudad);
+            const ciudadNombre = ciudadData?.nombre ?? 'N/A';
 
-              courthousesToUpload.push({
+            const courthouseDoc: CourthouseFinal = {
                 nombre: fixEncoding(juzgado.nombre),
                 dependencia: provinciaNombre,
                 ciudad: ciudadNombre,
@@ -178,46 +174,44 @@ export default function AdminCourthousesPage() {
                 instancia: fixEncoding(juzgado.instancia || ''),
                 direccion: fixEncoding(juzgado.direccion || ''),
                 telefono: fixEncoding(juzgado.telefono || ''),
-              });
+            };
+
+            const docRef = doc(collection(firestore, 'courthouses'));
+            batch.set(docRef, courthouseDoc);
+            batchCounter++;
+
+            if (batchCounter === BATCH_SIZE) {
+                parser.pause(); // Pause parsing to commit the batch
+                try {
+                    await batch.commit();
+                    setStatusText(`Cargados ${totalUploaded} juzgados...`);
+                    const currentProgress = 20 + (totalUploaded / (files.juzgados?.size || 1)) * 80;
+                    setProgress(currentProgress);
+                    batch = writeBatch(firestore);
+                    batchCounter = 0;
+                    parser.resume();
+                } catch(commitError) {
+                    parser.abort();
+                    reject(commitError);
+                }
             }
           },
           complete: async () => {
             try {
-              if (courthousesToUpload.length === 0) {
-                throw new Error("No se encontraron juzgados válidos en el archivo. Verifique que tenga una columna 'nombre' con datos.");
-              }
-              
-              setStatusText(`Se procesaron ${rowCount} juzgados. Preparando carga...`);
-              toast({ title: 'Subiendo datos...', description: `Se cargarán ${rowCount} juzgados. No cierre esta ventana.` });
-              
-              const batchSize = 400; // Firestore limit is 500, being safe.
-              let totalUploaded = 0;
-              
-              for (let i = 0; i < courthousesToUpload.length; i += batchSize) {
-                const batch = writeBatch(firestore);
-                const chunk = courthousesToUpload.slice(i, i + batchSize);
-                
-                chunk.forEach(courthouse => {
-                  const docRef = doc(collection(firestore, 'courthouses'));
-                  batch.set(docRef, courthouse);
-                });
-                
+              if (batchCounter > 0) {
+                setStatusText(`Cargando los últimos ${batchCounter} juzgados...`);
                 await batch.commit();
-                totalUploaded += chunk.length;
-                const currentProgress = 20 + (totalUploaded / courthousesToUpload.length) * 80;
-                setProgress(currentProgress);
-                setStatusText(`Cargados ${totalUploaded} de ${courthousesToUpload.length} juzgados.`);
               }
-
-              setStatusText('¡Carga Completa!');
+              setProgress(100);
+              setStatusText(`¡Carga Completa! Se procesaron y cargaron ${totalUploaded} juzgados.`);
               toast({
                 title: '¡Carga Completa!',
                 description: `Se han cargado ${totalUploaded} juzgados en la base de datos.`,
                 variant: 'default',
               });
               resolve();
-            } catch (uploadError) {
-              reject(uploadError);
+            } catch (finalCommitError) {
+              reject(finalCommitError);
             }
           },
           error: (err: any) => {
@@ -287,7 +281,7 @@ export default function AdminCourthousesPage() {
 
           {isLoading && (
             <div className="space-y-2 pt-4">
-                <p className="text-sm text-center text-muted-foreground">{statusText} ({Math.round(progress)}%)</p>
+                <p className="text-sm text-center text-muted-foreground">{statusText}</p>
                 <Progress value={progress} />
             </div>
           )}
@@ -321,5 +315,3 @@ export default function AdminCourthousesPage() {
     </div>
   );
 }
-
-    
