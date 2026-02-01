@@ -44,10 +44,10 @@ export const ratingCategories: {
   label: string;
   weight: number;
 }[] = [
-    { key: "calidadResoluciones", label: "Calidad/fundamentación de sentencias y resoluciones", weight: 4 },
+    { key: "calidadResoluciones", label: "Calidad/fundamentación de sentencias/resoluciones", weight: 4 },
     { key: "rapidezResoluciones", label: "Rapidez de sentencias/resoluciones", weight: 3 },
     { key: "rapidezDespacho", label: "Rapidez despacho diario", weight: 3 },
-    { key: "atencionMesaEntradas", label: "Atención en mesa de entradas", weight: 2 },
+    { key: "atencionMesaEntradas", label: "Atención de mesa de entradas", weight: 2 },
     { key: "tratoProfesional", label: "Trato al profesional", weight: 2 },
     { key: "puntualidadAudiencias", label: "Puntualidad en audiencias", weight: 2 },
     { key: "ordenGeneral", label: "Orden general", weight: 1 },

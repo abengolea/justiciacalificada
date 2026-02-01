@@ -1,5 +1,7 @@
 import CourthouseList from "@/components/juzgados/courthouse-list";
 
+export const dynamic = 'force-dynamic';
+
 export default function JuzgadosPage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">

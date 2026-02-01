@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockDependencias } from '@/lib/data';
+import { provincias as allProvincias } from '@/lib/data';
 
 interface CourthouseStats extends Courthouse {
   averageRating: number;
@@ -78,7 +78,7 @@ export default function RankingPage() {
 
   useEffect(() => { setIsClient(true) }, []);
 
-  const dependencias = useMemo(() => ['all', ...mockDependencias.map(d => d.nombre).sort()], []);
+  const dependencias = useMemo(() => ['all', ...allProvincias.sort()], []);
   
   const fueros = useMemo(() => {
       if (!courthouses) return ['all'];

@@ -13,7 +13,7 @@ import { CourthouseCard } from "./courthouse-card";
 import type { Courthouse, Rating } from "@/lib/types";
 import { ratingCategories } from "@/lib/types";
 import { Search, SortAsc } from "lucide-react";
-import { mockDependencias } from "@/lib/data";
+import { provincias } from "@/lib/data";
 import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
 import { collection, collectionGroup } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,7 +45,7 @@ export default function CourthouseList() {
   const [sortBy, setSortBy] = useState("rating-desc"); // Default sort
 
   const dependencias = useMemo(
-    () => ["all", ...mockDependencias.map((p) => p.nombre).sort()],
+    () => ["all", ...provincias.sort()],
     []
   );
 
