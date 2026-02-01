@@ -12,6 +12,13 @@ import {
   CardTitle,
   CardFooter
 } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import Papa, { ParseResult } from 'papaparse';
 import { useFirebase } from '@/firebase';
@@ -78,6 +85,7 @@ export default function AdminCourthousesPage() {
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [encoding, setEncoding] = useState('ISO-8859-1');
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState(0);
@@ -106,11 +114,11 @@ export default function AdminCourthousesPage() {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        encoding: "ISO-8859-1",
+        encoding: encoding,
         complete: (results) => {
           if (results.errors.length) {
             console.error(`Errors parsing ${file.name}:`, results.errors);
-            reject(new Error(`Error analizando ${file.name}. Revise el formato y la codificación.`));
+            reject(new Error(`Error analizando ${file.name}. Verifique el formato y la codificación.`));
           } else {
             resolve(results.data as T[]);
           }
@@ -158,7 +166,7 @@ export default function AdminCourthousesPage() {
           header: true,
           skipEmptyLines: true,
           worker: false,
-          encoding: "ISO-8859-1",
+          encoding: encoding,
           step: async (results: ParseResult<JuzgadoRaw>, parser) => {
             parser.pause();
             try {
@@ -344,7 +352,7 @@ export default function AdminCourthousesPage() {
         <CardHeader>
           <CardTitle>Carga de Base de Datos desde CSV</CardTitle>
           <CardDescription>
-            Convierta sus tablas SQL (`provincias`, `departamentos`, `ciudades`, `juzgados`) a formato CSV y suba cada archivo. El sistema unirá los datos para crear la base de datos de juzgados.
+            Convierta sus tablas SQL a formato CSV y suba cada archivo. Si observa caracteres extraños (ej: `Ã³` en lugar de `ó`), intente cambiar la codificación del archivo antes de cargarlo.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -376,7 +384,20 @@ export default function AdminCourthousesPage() {
             </div>
           )}
           
-          <div className="flex justify-center pt-4">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-4 border-t mt-6">
+            <div className="flex items-center gap-2">
+              <label htmlFor="encoding-select" className="text-sm font-medium text-muted-foreground">Codificación:</label>
+              <Select value={encoding} onValueChange={setEncoding}>
+                <SelectTrigger id="encoding-select" className="w-[180px]">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ISO-8859-1">ISO-8859-1 (Latin1)</SelectItem>
+                  <SelectItem value="UTF-8">UTF-8</SelectItem>
+                  <SelectItem value="windows-1252">Windows-1252</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button onClick={handleLoadData} disabled={!allFilesSelected || isLoading || isDeleting} size="lg">
               {isLoading ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -448,3 +469,5 @@ export default function AdminCourthousesPage() {
     </div>
   );
 }
+
+    
