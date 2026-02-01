@@ -2,19 +2,32 @@
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Database, Loader2, Upload, FileCheck, AlertTriangle } from 'lucide-react';
+import { Database, Loader2, Upload, FileCheck, AlertTriangle, Trash2 } from 'lucide-react';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Papa from 'papaparse';
 import { useFirebase } from '@/firebase';
-import { collection, writeBatch, doc } from 'firebase/firestore';
+import { collection, writeBatch, doc, getDocs } from 'firebase/firestore';
 import { Progress } from '@/components/ui/progress';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
 
 interface FileState {
   provincias: File | null;
@@ -64,6 +77,11 @@ export default function AdminCourthousesPage() {
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState(0);
+  const [deleteStatusText, setDeleteStatusText] = useState('');
+
   const { toast } = useToast();
   const { firestore } = useFirebase();
 
@@ -85,10 +103,8 @@ export default function AdminCourthousesPage() {
   const fixEncoding = (str: string): string => {
     if (!str) return '';
     try {
-        // This is a common pattern to fix double-encoded UTF-8 strings.
         return decodeURIComponent(escape(str));
     } catch (e) {
-        // Fallback for strings that are not double-encoded or have other issues.
         return str;
     }
   };
@@ -137,12 +153,11 @@ export default function AdminCourthousesPage() {
       
       setProgress(20);
 
-      // --- True Streaming Logic ---
       await new Promise<void>((resolve, reject) => {
         let batch = writeBatch(firestore);
         let batchCounter = 0;
         let totalUploaded = 0;
-        const BATCH_SIZE = 499; // Firestore limit is 500 writes per batch.
+        const BATCH_SIZE = 499;
 
         setStatusText('Comenzando a procesar el archivo de juzgados...');
 
@@ -151,49 +166,52 @@ export default function AdminCourthousesPage() {
           skipEmptyLines: true,
           worker: true,
           step: async (results, parser) => {
-            const juzgado = results.data as JuzgadoRaw;
+            parser.pause(); 
             
-            if (!juzgado.nombre || juzgado.nombre.trim() === '') {
-                return; // Skip empty rows
-            }
-            
-            totalUploaded++;
-            setStatusText(`Procesando juzgado N° ${totalUploaded}...`);
+            try {
+                const juzgado = results.data as JuzgadoRaw;
+                
+                if (!juzgado.nombre || juzgado.nombre.trim() === '') {
+                    parser.resume();
+                    return;
+                }
+                
+                totalUploaded++;
+                setStatusText(`Procesando juzgado N° ${totalUploaded}...`);
 
-            const departamento = departamentosMap.get(juzgado.id_departamento);
-            const provinciaId = departamento?.id_provincia;
-            const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
-            const ciudadData = ciudadesMap.get(juzgado.id_ciudad);
-            const ciudadNombre = ciudadData?.nombre ?? 'N/A';
+                const departamento = departamentosMap.get(juzgado.id_departamento);
+                const provinciaId = departamento?.id_provincia;
+                const provinciaNombre = provinciaId ? (provinciasMap.get(provinciaId) || 'N/A') : 'N/A';
+                const ciudadData = ciudadesMap.get(juzgado.id_ciudad);
+                const ciudadNombre = ciudadData?.nombre ?? 'N/A';
 
-            const courthouseDoc: CourthouseFinal = {
-                nombre: fixEncoding(juzgado.nombre),
-                dependencia: provinciaNombre,
-                ciudad: ciudadNombre,
-                fuero: fixEncoding(juzgado.fuero || ''),
-                instancia: fixEncoding(juzgado.instancia || ''),
-                direccion: fixEncoding(juzgado.direccion || ''),
-                telefono: fixEncoding(juzgado.telefono || ''),
-            };
+                const courthouseDoc: CourthouseFinal = {
+                    nombre: fixEncoding(juzgado.nombre),
+                    dependencia: provinciaNombre,
+                    ciudad: ciudadNombre,
+                    fuero: fixEncoding(juzgado.fuero || ''),
+                    instancia: fixEncoding(juzgado.instancia || ''),
+                    direccion: fixEncoding(juzgado.direccion || ''),
+                    telefono: fixEncoding(juzgado.telefono || ''),
+                };
 
-            const docRef = doc(collection(firestore, 'courthouses'));
-            batch.set(docRef, courthouseDoc);
-            batchCounter++;
+                const docRef = doc(collection(firestore, 'courthouses'));
+                batch.set(docRef, courthouseDoc);
+                batchCounter++;
 
-            if (batchCounter === BATCH_SIZE) {
-                parser.pause(); // Pause parsing to commit the batch
-                try {
+                if (batchCounter >= BATCH_SIZE) {
                     await batch.commit();
                     setStatusText(`Cargados ${totalUploaded} juzgados...`);
                     const currentProgress = 20 + (totalUploaded / (files.juzgados?.size || 1)) * 80;
                     setProgress(currentProgress);
                     batch = writeBatch(firestore);
                     batchCounter = 0;
-                    parser.resume();
-                } catch(commitError) {
-                    parser.abort();
-                    reject(commitError);
+                     await new Promise(r => setTimeout(r, 50));
                 }
+            } catch (stepError) {
+                console.error("Error in step processing:", stepError);
+            } finally {
+                parser.resume();
             }
           },
           complete: async () => {
@@ -236,6 +254,67 @@ export default function AdminCourthousesPage() {
     }
   };
 
+  const handleDeleteAllData = async () => {
+    setIsDeleting(true);
+    setDeleteProgress(0);
+    setDeleteStatusText('Iniciando eliminación...');
+    setError(null);
+
+    try {
+      const courthousesQuery = collection(firestore, 'courthouses');
+      const querySnapshot = await getDocs(courthousesQuery);
+      const totalDocs = querySnapshot.size;
+      
+      if (totalDocs === 0) {
+        toast({ title: 'No hay juzgados para eliminar.' });
+        setIsDeleting(false);
+        return;
+      }
+
+      setDeleteStatusText(`Encontrados ${totalDocs} juzgados para eliminar.`);
+      
+      let batch = writeBatch(firestore);
+      let batchCounter = 0;
+      let deletedCounter = 0;
+      const BATCH_SIZE = 499;
+
+      for (const docSnapshot of querySnapshot.docs) {
+        batch.delete(doc(firestore, 'courthouses', docSnapshot.id));
+        batchCounter++;
+        deletedCounter++;
+        
+        if (batchCounter === BATCH_SIZE || deletedCounter === totalDocs) {
+          await batch.commit();
+          setDeleteProgress((deletedCounter / totalDocs) * 100);
+          setDeleteStatusText(`Eliminando ${deletedCounter} de ${totalDocs} juzgados...`);
+          batch = writeBatch(firestore);
+          batchCounter = 0;
+        }
+      }
+
+      setDeleteProgress(100);
+      setDeleteStatusText(`¡Eliminación Completa! Se eliminaron ${totalDocs} juzgados.`);
+      toast({
+        title: '¡Base de Datos Limpia!',
+        description: `Se han eliminado todos los juzgados. Ahora puede cargar la lista actualizada.`,
+        variant: 'default',
+      });
+
+    } catch (e: any) {
+        console.error("Error during data deletion:", e);
+        const errorMessage = `Ocurrió un error al eliminar: ${e.message || 'Error desconocido'}.`;
+        setError(errorMessage);
+        setDeleteStatusText('Error en la eliminación.');
+        toast({
+            title: 'Error durante la eliminación',
+            description: e.message || 'No se pudo completar la eliminación.',
+            variant: 'destructive',
+        });
+    } finally {
+        setIsDeleting(false);
+    }
+  };
+
   const FileInputBox = ({ id, label, file }: { id: TableName, label: string, file: File | null }) => (
     <div
       className={`relative border-2 border-dashed rounded-lg p-6 flex flex-col justify-center items-center text-center cursor-pointer transition-colors ${file ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
@@ -259,8 +338,8 @@ export default function AdminCourthousesPage() {
   );
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Gestionar Juzgados</h2>
       </div>
 
@@ -286,7 +365,7 @@ export default function AdminCourthousesPage() {
             </div>
           )}
 
-          {error && (
+          {error && !isDeleting && (
             <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20 mt-4">
                  <div className="flex items-start gap-4">
                     <AlertTriangle className="h-6 w-6 text-destructive mt-1" />
@@ -301,7 +380,7 @@ export default function AdminCourthousesPage() {
           )}
           
           <div className="flex justify-center pt-4">
-            <Button onClick={handleLoadData} disabled={!allFilesSelected || isLoading} size="lg">
+            <Button onClick={handleLoadData} disabled={!allFilesSelected || isLoading || isDeleting} size="lg">
               {isLoading ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               ) : (
@@ -311,6 +390,63 @@ export default function AdminCourthousesPage() {
             </Button>
           </div>
         </CardContent>
+      </Card>
+      
+      <Card className="border-destructive">
+          <CardHeader>
+              <CardTitle className="text-destructive">Zona de Peligro</CardTitle>
+              <CardDescription>
+                  Acciones destructivas que no se pueden deshacer. Úselo con precaución para limpiar la base de datos antes de una nueva carga.
+              </CardDescription>
+          </CardHeader>
+          <CardContent>
+              {isDeleting && (
+                 <div className="space-y-2">
+                    <p className="text-sm text-center text-muted-foreground">{deleteStatusText}</p>
+                    <Progress value={deleteProgress} className="[&>div]:bg-destructive" />
+                </div>
+              )}
+              {error && isDeleting && (
+                <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20 mt-4">
+                     <div className="flex items-start gap-4">
+                        <AlertTriangle className="h-6 w-6 text-destructive mt-1" />
+                        <div>
+                            <h3 className="font-semibold text-destructive">Error en la Eliminación</h3>
+                            <p className="text-sm text-left text-destructive/80">
+                                {error}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+              )}
+          </CardContent>
+          <CardFooter>
+              <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                      <Button variant="destructive" disabled={isLoading || isDeleting}>
+                          <Trash2 className="mr-2 h-5 w-5" />
+                          Eliminar Todos los Juzgados
+                      </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                          <AlertDialogTitle>¿Está absolutamente seguro?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                              Esta acción es irreversible. Se eliminarán permanentemente todos los juzgados de la base de datos.
+                          </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                              onClick={handleDeleteAllData}
+                              className="bg-destructive hover:bg-destructive/90"
+                          >
+                              Sí, eliminar todo
+                          </AlertDialogAction>
+                      </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
+          </CardFooter>
       </Card>
     </div>
   );
