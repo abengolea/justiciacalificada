@@ -283,11 +283,11 @@ export default function AdminDatabasePage() {
                     return {
                         ...row,
                         provinciaId: provincia?.id || null,
-                        provinciaNombre: provincia?.nombre || null,
+                        dependencia: provincia?.nombre || null,
                         departamentoId: departamento?.id || null,
                         departamentoNombre: departamento?.nombre || null,
                         ciudadId: ciudad?.id || null,
-                        ciudadNombre: ciudad?.nombre || null,
+                        ciudad: ciudad?.nombre || null,
                     };
                 }
             } else if (tableName === 'fueros_x_juzgados') {
@@ -509,5 +509,3 @@ export default function AdminDatabasePage() {
     </div>
   );
 }
-
-    

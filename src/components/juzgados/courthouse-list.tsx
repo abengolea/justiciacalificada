@@ -23,6 +23,10 @@ import { useAdminStatus } from "@/hooks/use-admin-status";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
+interface Fuero { id: string; nombre: string; }
+interface Dependencia { id: string; nombre: string; }
+interface FueroXJuzgado { id: string; id_juzgado: string; id_fuero: string; }
+
 export default function CourthouseList() {
   const [isClient, setIsClient] = useState(false);
 
@@ -38,6 +42,16 @@ export default function CourthouseList() {
   const ratingsQuery = useMemoFirebase(() => (firestore ? collectionGroup(firestore, 'ratings') : null), [firestore]);
   const { data: ratings, isLoading: isLoadingRatings } = useCollection<Rating>(ratingsQuery);
 
+  const fuerosQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'fueros') : null), [firestore]);
+  const { data: fueros, isLoading: isLoadingFueros } = useCollection<Fuero>(fuerosQuery);
+
+  const dependenciasQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'dependencias') : null), [firestore]);
+  const { data: dependenciasData, isLoading: isLoadingDependencias } = useCollection<Dependencia>(dependenciasQuery);
+
+  const fuerosXJuzgadosQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'fueros_x_juzgados') : null), [firestore]);
+  const { data: fuerosXJuzgados, isLoading: isLoadingFuerosXJuzgados } = useCollection<FueroXJuzgado>(fuerosXJuzgadosQuery);
+
+
   const { isAdmin, isLoading: isLoadingAdmin } = useAdminStatus();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,15 +59,30 @@ export default function CourthouseList() {
   const [fueroFilter, setFueroFilter] = useState("all");
   const [sortBy, setSortBy] = useState("rating-desc"); // Default sort
 
-  const dependencias = useMemo(
+  const dependenciasList = useMemo(
     () => ["all", ...provincias.sort()],
     []
   );
 
-  const fueros = useMemo(
-    () => ["all", ...Array.from(new Set((courthouses || []).map((c) => c.fuero).filter(Boolean))).sort()],
-    [courthouses]
+  const fuerosList = useMemo(
+    () => ["all", ...Array.from(new Set((fueros || []).map((f) => f.nombre).filter(Boolean))).sort()],
+    [fueros]
   );
+  
+  const fuerosMap = useMemo(() => new Map(fueros?.map(f => [f.id, f.nombre])), [fueros]);
+  const dependenciasMap = useMemo(() => new Map(dependenciasData?.map(d => [d.id, d.nombre])), [dependenciasData]);
+
+  const juzgadoToFueroIdMap = useMemo(() => {
+      const map = new Map<string, string>();
+      if (!fuerosXJuzgados) return map;
+      for (const link of fuerosXJuzgados) {
+          if (!map.has(link.id_juzgado)) {
+              map.set(link.id_juzgado, link.id_fuero);
+          }
+      }
+      return map;
+  }, [fuerosXJuzgados]);
+
 
   const ratingStats = useMemo(() => {
     const stats = new Map<string, { totalScore: number; count: number }>();
@@ -91,9 +120,21 @@ export default function CourthouseList() {
   }
   
   const processedCourthouses = useMemo(() => {
-    if (!courthouses) return [];
+    if (!courthouses || !fuerosMap.size || !dependenciasMap.size || !juzgadoToFueroIdMap.size) return [];
+    
+    const augmentedCourthouses = courthouses.map(c => {
+      const fueroId = juzgadoToFueroIdMap.get(c.id);
+      const fueroName = fueroId ? fuerosMap.get(fueroId) : '';
+      const instanciaName = dependenciasMap.get((c as any).id_tipo) || '';
 
-    let filtered = courthouses.filter((courthouse) => {
+      return {
+        ...c,
+        fuero: fueroName,
+        instancia: instanciaName
+      };
+    });
+
+    let filtered = augmentedCourthouses.filter((courthouse) => {
         const searchWords = searchTerm.toLowerCase().split(' ').filter(Boolean);
         const dependenciaMatch = dependenciaFilter === "all" || courthouse.dependencia === dependenciaFilter;
         const fueroMatch = fueroFilter === "all" || courthouse.fuero === fueroFilter;
@@ -131,10 +172,10 @@ export default function CourthouseList() {
         }
     });
 
-  }, [courthouses, searchTerm, dependenciaFilter, fueroFilter, sortBy, ratingStats]);
+  }, [courthouses, searchTerm, dependenciaFilter, fueroFilter, sortBy, ratingStats, fuerosMap, dependenciasMap, juzgadoToFueroIdMap]);
 
 
-  const isLoading = isLoadingCourthouses || isLoadingRatings || isLoadingAdmin;
+  const isLoading = isLoadingCourthouses || isLoadingRatings || isLoadingAdmin || isLoadingFueros || isLoadingDependencias || isLoadingFuerosXJuzgados;
   const showLoading = !isClient || isLoading;
 
   const isAnyFilterActive = searchTerm !== '' || dependenciaFilter !== 'all' || fueroFilter !== 'all';
@@ -158,7 +199,7 @@ export default function CourthouseList() {
               <SelectValue placeholder="Filtrar por dependencia" />
             </SelectTrigger>
             <SelectContent>
-              {dependencias.map((p) => (
+              {dependenciasList.map((p) => (
                 <SelectItem key={p} value={p}>
                   {p === "all" ? "Todas las dependencias" : p}
                 </SelectItem>
@@ -170,7 +211,7 @@ export default function CourthouseList() {
               <SelectValue placeholder="Filtrar por fuero" />
             </SelectTrigger>
             <SelectContent>
-              {fueros.map((f) => (
+              {fuerosList.map((f) => (
                 <SelectItem key={f} value={f}>
                   {f === "all" ? "Todos los fueros" : f}
                 </SelectItem>
