@@ -120,12 +120,12 @@ export default function CourthouseList() {
   }
   
   const processedCourthouses = useMemo(() => {
-    if (!courthouses || !fuerosMap.size || !dependenciasMap.size || !juzgadoToFueroIdMap.size) return [];
+    if (!courthouses) return [];
     
     const augmentedCourthouses = courthouses.map(c => {
       const fueroId = juzgadoToFueroIdMap.get(c.id);
-      const fueroName = fueroId ? fuerosMap.get(fueroId) : '';
-      const instanciaName = dependenciasMap.get((c as any).id_tipo) || '';
+      const fueroName = fueroId ? fuerosMap.get(fueroId) : c.fuero;
+      const instanciaName = dependenciasMap.get((c as any).id_tipo) || c.instancia;
 
       return {
         ...c,
