@@ -277,7 +277,7 @@ export default function AdminDatabasePage() {
             if (tableName === 'juzgados') {
                 onData = (row, maps) => {
                     const ciudad = maps.ciudades.get(row.id_ciudad);
-                    const departamento = ciudad ? maps.departamentos.get(ciudad.id_departamento) : null;
+                    const departamento = maps.departamentos.get(row.id_departamento);
                     const provincia = departamento ? maps.provincias.get(departamento.id_provincia) : null;
                     
                     return {
