@@ -135,13 +135,13 @@ export default function RankingPage() {
   }, [courthouses, ratings, dependenciaFilter, fueroFilter, instanciaFilter]);
 
   const topRated = useMemo(() => 
-    [...courthouseStats].filter(c => c.ratingCount > 0).sort((a, b) => b.averageRating - a.averageRating).slice(0, 10),
+    [...courthouseStats].filter(c => c.ratingCount > 10).sort((a, b) => b.averageRating - a.averageRating).slice(0, 10),
     [courthouseStats]
   );
   
   const bottomRated = useMemo(() => 
     [...courthouseStats]
-      .filter(c => c.ratingCount > 0)
+      .filter(c => c.ratingCount > 10)
       .sort((a, b) => a.averageRating - b.averageRating)
       .slice(0, 10),
     [courthouseStats]

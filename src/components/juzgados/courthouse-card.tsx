@@ -17,14 +17,22 @@ export function CourthouseCard({ courthouse, averageRating, ratingCount }: Court
     <Link href={`/juzgados/${courthouse.id}`} className="h-full">
       <Card className="flex flex-col h-full hover:border-primary transition-colors duration-200">
         <CardHeader>
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-start gap-4">
             <CardTitle className="text-lg font-headline leading-tight pr-2">
               {courthouse.nombre}
             </CardTitle>
-            <div className="flex items-center gap-1 text-sm shrink-0">
-              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-              <span className="font-bold">{averageRating.toFixed(1)}</span>
-              <span className="text-muted-foreground">({ratingCount})</span>
+            <div className="flex items-center gap-2 text-sm shrink-0">
+              {ratingCount > 10 ? (
+                <>
+                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                  <span className="font-bold">{averageRating.toFixed(1)}</span>
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground">Sin calificar</span>
+              )}
+              <span className="text-muted-foreground text-xs">
+                ({ratingCount} {ratingCount === 1 ? 'voto' : 'votos'})
+              </span>
             </div>
           </div>
           <CardDescription className="flex items-center gap-2 pt-2">
@@ -36,7 +44,7 @@ export function CourthouseCard({ courthouse, averageRating, ratingCount }: Court
           {/* Content if needed */}
         </CardContent>
         <CardFooter>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">{courthouse.fuero}</Badge>
             <Badge variant="outline">{courthouse.instancia}</Badge>
           </div>

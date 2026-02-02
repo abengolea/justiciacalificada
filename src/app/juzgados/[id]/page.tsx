@@ -168,8 +168,8 @@ export default function CourthouseDetailPage({ params }: CourthouseDetailPagePro
               <CardTitle className="font-headline">Calificaciones</CardTitle>
               {isLoading ? <Skeleton className="h-5 w-48 mt-1" /> : (
                 <CardDescription>
-                  Promedio de calificaciones basado en {approvedRatings.length}{" "}
-                  evaluaciones.
+                  Basado en {approvedRatings.length}{" "}
+                  {approvedRatings.length === 1 ? 'evaluación' : 'evaluaciones'}.
                 </CardDescription>
               )}
             </CardHeader>
@@ -177,33 +177,42 @@ export default function CourthouseDetailPage({ params }: CourthouseDetailPagePro
               {isLoading ? (
                 <div className="space-y-4">
                   <Skeleton className="h-10 w-32" />
-                  {[...Array(5)].map(i => <Skeleton key={i} className="h-8 w-full" />)}
+                  {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center mb-6">
-                    <Star className="w-8 h-8 text-yellow-500 fill-yellow-500 mr-2" />
-                    <span className="text-4xl font-bold">
-                      {overallAverage.toFixed(1)}
-                    </span>
-                    <span className="text-xl text-muted-foreground ml-2">/ 10</span>
-                  </div>
-                  <div className="space-y-4">
-                    {ratingCategories.map(({ key, label }) => (
-                      <div key={key}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center">
-                            {iconMap[key]}
-                            <span className="text-sm font-medium">{label}</span>
-                          </div>
-                          <span className="text-sm font-bold">
-                            {averages[key].toFixed(1)}
-                          </span>
-                        </div>
-                        <Progress value={averages[key] * 10} />
+                  {approvedRatings.length > 10 ? (
+                    <>
+                      <div className="flex items-center mb-6">
+                        <Star className="w-8 h-8 text-yellow-500 fill-yellow-500 mr-2" />
+                        <span className="text-4xl font-bold">
+                          {overallAverage.toFixed(1)}
+                        </span>
+                        <span className="text-xl text-muted-foreground ml-2">/ 10</span>
                       </div>
-                    ))}
-                  </div>
+                      <div className="space-y-4">
+                        {ratingCategories.map(({ key, label }) => (
+                          <div key={key}>
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center">
+                                {iconMap[key]}
+                                <span className="text-sm font-medium">{label}</span>
+                              </div>
+                              <span className="text-sm font-bold">
+                                {averages[key].toFixed(1)}
+                              </span>
+                            </div>
+                            <Progress value={averages[key] * 10} />
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-6 text-muted-foreground bg-accent/10 rounded-md">
+                      <p className="font-semibold text-foreground/80">Calificación no disponible</p>
+                      <p className="text-sm">Se necesitan más de 10 calificaciones para mostrar los promedios.</p>
+                    </div>
+                  )}
                 </>
               )}
             </CardContent>
@@ -216,7 +225,7 @@ export default function CourthouseDetailPage({ params }: CourthouseDetailPagePro
             <CardContent>
               {isLoading ? (
                  <div className="space-y-6">
-                    {[...Array(2)].map(i => <Skeleton key={i} className="h-24 w-full" />)}
+                    {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
                  </div>
               ) : approvedRatings.length > 0 ? (
                 <div className="space-y-6">
