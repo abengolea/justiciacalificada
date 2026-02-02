@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -70,7 +71,7 @@ export default function RankingPage() {
   const [fueroFilter, setFueroFilter] = useState('all');
   const [instanciaFilter, setInstanciaFilter] = useState('all');
 
-  const courthousesQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'courthouses') : null), [firestore]);
+  const courthousesQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'juzgados') : null), [firestore]);
   const { data: courthouses, isLoading: isLoadingCourthouses } = useCollection<Courthouse>(courthousesQuery);
 
   const ratingsQuery = useMemoFirebase(() => (firestore ? collectionGroup(firestore, 'ratings') : null), [firestore]);

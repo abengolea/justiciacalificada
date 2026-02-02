@@ -1,3 +1,4 @@
+
 'use client';
 
 import { notFound, useParams } from "next/navigation";
@@ -108,10 +109,10 @@ export default function CourthouseDetailPage({ params }: CourthouseDetailPagePro
   const { firestore } = useFirebase();
   const courthouseId = params.id;
 
-  const courthouseDocRef = useMemoFirebase(() => doc(firestore, 'courthouses', courthouseId), [firestore, courthouseId]);
+  const courthouseDocRef = useMemoFirebase(() => doc(firestore, 'juzgados', courthouseId), [firestore, courthouseId]);
   const { data: courthouse, isLoading: isLoadingCourthouse } = useDoc<Courthouse>(courthouseDocRef);
 
-  const ratingsCollectionRef = useMemoFirebase(() => collection(firestore, 'courthouses', courthouseId, 'ratings'), [firestore, courthouseId]);
+  const ratingsCollectionRef = useMemoFirebase(() => collection(firestore, 'juzgados', courthouseId, 'ratings'), [firestore, courthouseId]);
   const { data: ratings, isLoading: isLoadingRatings } = useCollection<Rating>(ratingsCollectionRef);
 
   const approvedRatings = useMemo(() => ratings?.filter(r => r.status === 'approved') ?? [], [ratings]);

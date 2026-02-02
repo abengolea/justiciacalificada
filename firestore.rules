@@ -6,13 +6,13 @@
  *
  * Data Structure:
  * - /lawyers/{uid}: Private user profiles, where the document ID matches the user's Auth UID. Admins have a 'role: "admin"' field here.
- * - /courthouses/{courthouseId}: Publicly available information about courthouses.
- * - /courthouses/{courthouseId}/ratings/{ratingId}: User-submitted ratings, which are publicly readable.
- * - /courthouses/{courthouseId}/statistics/{statisticId}: Publicly readable, aggregated statistics, not writable by clients.
+ * - /juzgados/{juzgadoId}: Publicly available information about courthouses.
+ * - /juzgados/{juzgadoId}/ratings/{ratingId}: User-submitted ratings, which are publicly readable.
+ * - /juzgados/{juzgadoId}/statistics/{statisticId}: Publicly readable, aggregated statistics, not writable by clients.
  *
  * Key Security Decisions:
  * - Strict Ownership: A lawyer's profile in `/lawyers` is strictly private and can only be accessed or modified by the owner, unless the user is an admin.
- * - Public Read, Admin Write: Core data like `/courthouses` is readable by anyone but can only be modified by users designated as admins.
+ * - Public Read, Admin Write: Core data like `/juzgados` is readable by anyone but can only be modified by users designated as admins.
  * - Denormalized Ownership for Subcollections: Each `rating` document contains a `lawyerId` field. This denormalization is critical for security, allowing write-access checks directly on the document.
  * - Read-Only Data: Aggregated data like `/statistics` is completely locked down from client writes to ensure data integrity.
  *
@@ -20,7 +20,7 @@
  * To create simpler, more performant rules, we denormalize the `lawyerId` onto each `rating` document. This allows a fast, simple rule like `isOwner(resource.data.lawyerId)` without any extra `get()` calls to check who created the rating.
  *
  * Structural Segregation:
- * The data is naturally segregated into top-level collections based on access patterns (e.g., private `lawyers` vs. public `courthouses`), which is a secure and performant design.
+ * The data is naturally segregated into top-level collections based on access patterns (e.g., private `lawyers` vs. public `juzgados`), which is a secure and performant design.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -99,7 +99,7 @@ service cloud.firestore {
     }
 
 
-    function isValidNewRating(courthouseId) {
+    function isValidNewRating(juzgadoId) {
       let data = request.resource.data;
        let hasValidPuntuaciones = data.puntuaciones.calidadResoluciones >= 0 && data.puntuaciones.calidadResoluciones <= 10 &&
                              data.puntuaciones.rapidezResoluciones >= 0 && data.puntuaciones.rapidezResoluciones <= 10 &&
@@ -113,7 +113,7 @@ service cloud.firestore {
                              data.puntuaciones.capacitacionPersonal >= 0 && data.puntuaciones.capacitacionPersonal <= 10;
       
       return isOwner(data.lawyerId) &&
-             data.courthouseId == courthouseId &&
+             data.courthouseId == juzgadoId &&
              data.status == 'pending' &&
              data.fechaCalificacion == request.time &&
              data.comentario is string && data.comentario.size() >= 10 && data.comentario.size() <= 500 &&
@@ -138,37 +138,8 @@ service cloud.firestore {
       allow update: if isExistingDoc() && isValidLawyerUpdate(uid);
       allow delete: if isAdmin() && isExistingDoc();
     }
-
-    match /courthouses/{courthouseId} {
-      allow get, list: if true;
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin() && isExistingDoc();
-
-      match /ratings/{ratingId} {
-        allow get, list: if true;
-        allow create: if isApprovedLawyer() && isValidNewRating(courthouseId);
-        allow update: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc() && areRatingFieldsImmutable();
-        allow delete: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc();
-      }
-
-      match /statistics/{statisticId} {
-        allow get, list: if true;
-        allow create, update, delete: if false;
-      }
-    }
-
-    // This rule allows the collection group query for 'ratings' to work.
-    // It's needed for the main courthouse list page to calculate average ratings.
-    match /{path=**}/ratings/{ratingId} {
-      allow get, list: if true;
-    }
-
-    match /mail/{mailId} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if false;
-    }
     
-    // --- NEW: Rules for bulk data import by admin ---
+    // --- Rules for bulk data import by admin ---
     
     // Public data collections that are only writable by admins.
     match /provincias/{docId}         { allow read: if true; allow write: if isAdmin(); }
@@ -180,10 +151,21 @@ service cloud.firestore {
     match /ranking_general/{docId}    { allow read: if true; allow write: if isAdmin(); }
     match /historico/{docId}          { allow read: if true; allow write: if isAdmin(); }
 
-    // Rule for the 'juzgados' table being imported. Mirrors 'courthouses'.
     match /juzgados/{juzgadoId} {
       allow get, list: if true;
       allow create, update, delete: if isAdmin();
+
+      match /ratings/{ratingId} {
+        allow get, list: if true;
+        allow create: if isApprovedLawyer() && isValidNewRating(juzgadoId);
+        allow update: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc() && areRatingFieldsImmutable();
+        allow delete: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc();
+      }
+
+      match /statistics/{statisticId} {
+        allow get, list: if true;
+        allow create, update, delete: if false;
+      }
     }
     
     // Join table for fueros and juzgados
@@ -203,5 +185,17 @@ service cloud.firestore {
 
     // Collection for logging import errors
     match /import_errors/{docId}      { allow read, write: if isAdmin(); }
+
+
+    // This rule allows the collection group query for 'ratings' to work.
+    // It's needed for the main courthouse list page to calculate average ratings.
+    match /{path=**}/ratings/{ratingId} {
+      allow get, list: if true;
+    }
+
+    match /mail/{mailId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if false;
+    }
   }
 }

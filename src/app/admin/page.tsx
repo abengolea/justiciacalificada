@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -18,7 +19,7 @@ import { Courthouse, Lawyer, Rating } from '@/lib/types';
 export default function AdminDashboard() {
   const { firestore } = useFirebase();
 
-  const courthousesQuery = useMemoFirebase(() => collection(firestore, 'courthouses'), [firestore]);
+  const courthousesQuery = useMemoFirebase(() => collection(firestore, 'juzgados'), [firestore]);
   const { data: courthouses, isLoading: isLoadingCourthouses } = useCollection<Courthouse>(courthousesQuery);
 
   const usersQuery = useMemoFirebase(() => collection(firestore, 'lawyers'), [firestore]);

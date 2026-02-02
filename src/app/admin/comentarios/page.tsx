@@ -32,7 +32,7 @@ export default function AdminCommentsPage() {
   const ratingsQuery = useMemoFirebase(() => collectionGroup(firestore, 'ratings'), [firestore]);
   const { data: ratings, isLoading: isLoadingRatings } = useCollection<Rating>(ratingsQuery);
 
-  const courthousesQuery = useMemoFirebase(() => collection(firestore, 'courthouses'), [firestore]);
+  const courthousesQuery = useMemoFirebase(() => collection(firestore, 'juzgados'), [firestore]);
   const { data: courthouses, isLoading: isLoadingCourthouses } = useCollection<Courthouse>(courthousesQuery);
 
   const lawyersQuery = useMemoFirebase(() => collection(firestore, 'lawyers'), [firestore]);
@@ -47,7 +47,7 @@ export default function AdminCommentsPage() {
   const isLoading = isLoadingRatings || isLoadingCourthouses || isLoadingLawyers;
 
   const handleUpdateStatus = (rating: Rating, status: 'approved' | 'rejected') => {
-    const ratingDocRef = doc(firestore, 'courthouses', rating.courthouseId, 'ratings', rating.id);
+    const ratingDocRef = doc(firestore, 'juzgados', rating.courthouseId, 'ratings', rating.id);
     updateDocumentNonBlocking(ratingDocRef, { status });
 
     const lawyer = lawyerMap.get(rating.lawyerId);
@@ -83,7 +83,7 @@ export default function AdminCommentsPage() {
   
   const handleDelete = () => {
     if (!ratingToDelete) return;
-    const ratingDocRef = doc(firestore, 'courthouses', ratingToDelete.courthouseId, 'ratings', ratingToDelete.id);
+    const ratingDocRef = doc(firestore, 'juzgados', ratingToDelete.courthouseId, 'ratings', ratingToDelete.id);
     deleteDocumentNonBlocking(ratingDocRef);
     
     toast({

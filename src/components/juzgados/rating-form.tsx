@@ -125,7 +125,7 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
         return;
     }
 
-    const ratingsCollectionRef = collection(firestore, 'courthouses', courthouseId, 'ratings');
+    const ratingsCollectionRef = collection(firestore, 'juzgados', courthouseId, 'ratings');
     
     const newRatingData = { 
       courthouseId: courthouseId, 

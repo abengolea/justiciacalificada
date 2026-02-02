@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -31,7 +32,7 @@ export default function CourthouseList() {
 
   const { firestore } = useFirebase();
 
-  const courthousesQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'courthouses') : null), [firestore]);
+  const courthousesQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'juzgados') : null), [firestore]);
   const { data: courthouses, isLoading: isLoadingCourthouses } = useCollection<Courthouse>(courthousesQuery);
 
   const ratingsQuery = useMemoFirebase(() => (firestore ? collectionGroup(firestore, 'ratings') : null), [firestore]);
