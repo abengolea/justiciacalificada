@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef } from 'react';
@@ -63,9 +64,12 @@ class FirestoreBatchHandler {
   private count: number = 0;
   private batchSize: number;
   private currentCollection: string = '';
+  private addLog: (message: string, type?: LogEntry['type']) => void;
 
-  constructor(db: Firestore, batchSize: number = 450) {
+
+  constructor(db: Firestore, addLog: (message: string, type?: LogEntry['type']) => void, batchSize: number = 450) {
     this.db = db;
+    this.addLog = addLog;
     this.batchSize = batchSize;
     this.batch = writeBatch(db);
   }
@@ -83,10 +87,15 @@ class FirestoreBatchHandler {
   }
 
   async commit() {
-    if (this.count === 0) return;
+    if (this.count === 0) {
+        return;
+    }
+    this.addLog(`Committing batch of ${this.count} documents to ${this.currentCollection}...`);
     try {
-      await this.batch.commit();
+        await this.batch.commit();
+        this.addLog(`Successfully committed ${this.count} documents to ${this.currentCollection}.`, 'success');
     } catch (e: any) {
+        this.addLog(`Batch commit failed for ${this.currentCollection}: ${e.message}`, 'error');
         const permissionError = new FirestorePermissionError({
             path: `(batch write to collection: ${this.currentCollection || 'unknown'})`,
             operation: 'write',
@@ -94,8 +103,8 @@ class FirestoreBatchHandler {
         errorEmitter.emit('permission-error', permissionError);
         throw e; // re-throw to be caught by the calling function
     } finally {
-      this.batch = writeBatch(this.db);
-      this.count = 0;
+        this.batch = writeBatch(this.db);
+        this.count = 0;
     }
   }
 
@@ -148,9 +157,9 @@ export default function AdminDatabasePage() {
       addLog(`Iniciando importación para: ${tableName}`);
       setProgress(prev => ({ ...prev, [tableName]: { processed: 0, total: file.size, errors: 0, status: 'processing' } }));
       
-      const batchHandler = new FirestoreBatchHandler(firestore);
+      const batchHandler = new FirestoreBatchHandler(firestore, addLog);
       batchHandler.setCurrentCollection(tableName);
-      const errorBatchHandler = new FirestoreBatchHandler(firestore);
+      const errorBatchHandler = new FirestoreBatchHandler(firestore, addLog);
       let rowCounter = 0;
       let errorCounter = 0;
 
@@ -334,7 +343,7 @@ export default function AdminDatabasePage() {
         for (const tableName of collectionsToDelete) {
             addLog(`Eliminando colección: ${tableName}...`);
             const collectionRef = collection(firestore, tableName);
-            const batchHandler = new FirestoreBatchHandler(firestore);
+            const batchHandler = new FirestoreBatchHandler(firestore, addLog);
             batchHandler.setCurrentCollection(tableName);
             
             const querySnapshot = await getDocs(collectionRef);
@@ -509,3 +518,5 @@ export default function AdminDatabasePage() {
     </div>
   );
 }
+
+    
