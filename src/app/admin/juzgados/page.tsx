@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef } from 'react';
@@ -133,14 +134,13 @@ export default function AdminDatabasePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const addLog = (message: string, type: LogEntry['type'] = 'info') => {
-    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${message}`, ...prev].map((msg, i) => ({ type: i === 0 ? type : prev[i-1]?.type || 'info', message: msg })));
-    setLogs(prev => [...prev, { type, message: `[${new Date().toLocaleTimeString()}] ${message}` }]);
+    setLogs(prev => [{ type, message: `[${new Date().toLocaleTimeString()}] ${message}` }, ...prev]);
   };
   
   const handleFileSelection = (selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
   
-    const newFileState: FileState = orderedTables.reduce((acc, tbl) => ({ ...acc, [tbl]: null }), {});
+    const newFileState: FileState = { ...files };
     let filesFound = 0;
   
     Array.from(selectedFiles).forEach(file => {
@@ -151,9 +151,10 @@ export default function AdminDatabasePage() {
       const tableName = file.name.toLowerCase().replace('.csv', '');
       if (orderedTables.includes(tableName)) {
         newFileState[tableName] = file;
-        filesFound++;
       }
     });
+
+    filesFound = Object.values(newFileState).filter(Boolean).length;
   
     setFiles(newFileState);
     toast({
@@ -504,7 +505,7 @@ export default function AdminDatabasePage() {
                         }>
                             {log.message}
                         </p>
-                    )).reverse()}
+                    ))}
                  </ScrollArea>
             </div>
           )}
@@ -563,4 +564,5 @@ export default function AdminDatabasePage() {
       </Card>
     </div>
   );
-}
+
+    
