@@ -10,6 +10,7 @@ import {
   MessageSquare,
   PanelLeft,
   Loader2,
+  Wand2,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -122,6 +123,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <Link href="/admin/juzgados">
                     <Gavel />
                     Juzgados
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+               <SidebarMenuItem>
+                <SidebarMenuButton href="/admin/correccion" asChild>
+                  <Link href="/admin/correccion">
+                    <Wand2 />
+                    Corrección de Datos
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

@@ -1,6 +1,9 @@
 "use server";
 
 import { summarizeCourtInsights } from "@/ai/flows/summarize-court-insights";
+import { analyzeCourthouses } from "@/ai/flows/analyze-courthouses";
+import type { Courthouse } from "@/lib/types";
+
 
 export async function getAiSummary(courtId: string, comments: string[]) {
   try {
@@ -9,5 +12,15 @@ export async function getAiSummary(courtId: string, comments: string[]) {
   } catch (error) {
     console.error("Error generating AI summary:", error);
     return { summary: null };
+  }
+}
+
+export async function getAiAnalysis(courthouses: Courthouse[]) {
+  try {
+    const result = await analyzeCourthouses({ courthouses });
+    return { corrections: result.corrections ?? [] };
+  } catch (error) {
+    console.error("Error generating AI analysis:", error);
+    return { corrections: [] };
   }
 }
