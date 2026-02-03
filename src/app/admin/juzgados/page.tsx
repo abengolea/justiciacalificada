@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Database, Loader2, Upload, FileCheck, AlertTriangle, Trash2 } from 'lucide-react';
+import { Database, Loader2, Upload, FileCheck, AlertTriangle, Trash2, Check, X } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -30,6 +29,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 const orderedTables = [
   'provincias',
@@ -126,25 +126,55 @@ export default function AdminDatabasePage() {
   const [progress, setProgress] = useState<ProgressState>({});
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
-  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const addLog = (message: string, type: LogEntry['type'] = 'info') => {
+    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${message}`, ...prev].map((msg, i) => ({ type: i === 0 ? type : prev[i-1]?.type || 'info', message: msg })));
     setLogs(prev => [...prev, { type, message: `[${new Date().toLocaleTimeString()}] ${message}` }]);
   };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, tableName: string) => {
-    const file = e.target.files?.[0] || null;
-    if (file && !file.name.toLowerCase().endsWith('.csv')) {
-        toast({ title: "Tipo de archivo incorrecto", description: `Por favor, suba un archivo .csv para la tabla ${tableName}.`, variant: "destructive" });
+  const handleFileSelection = (selectedFiles: FileList | null) => {
+    if (!selectedFiles) return;
+  
+    const newFileState: FileState = orderedTables.reduce((acc, tbl) => ({ ...acc, [tbl]: null }), {});
+    let filesFound = 0;
+  
+    Array.from(selectedFiles).forEach(file => {
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        toast({ title: "Tipo de archivo incorrecto", description: `El archivo "${file.name}" no es un .csv y será ignorado.`, variant: "destructive" });
         return;
-    }
-    setFiles(prev => ({ ...prev, [tableName]: file }));
+      }
+      const tableName = file.name.toLowerCase().replace('.csv', '');
+      if (orderedTables.includes(tableName)) {
+        newFileState[tableName] = file;
+        filesFound++;
+      }
+    });
+  
+    setFiles(newFileState);
+    toast({
+      title: "Archivos procesados",
+      description: `Se encontraron ${filesFound} de ${orderedTables.length} archivos requeridos.`,
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileSelection(e.target.files);
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    handleFileSelection(e.dataTransfer.files);
   };
 
   const allFilesSelected = orderedTables.every(table => files[table]);
+  const filesFoundCount = Object.values(files).filter(Boolean).length;
 
   const genericImport = (
     tableName: string, 
@@ -160,6 +190,7 @@ export default function AdminDatabasePage() {
       const batchHandler = new FirestoreBatchHandler(firestore, addLog);
       batchHandler.setCurrentCollection(tableName);
       const errorBatchHandler = new FirestoreBatchHandler(firestore, addLog);
+      errorBatchHandler.setCurrentCollection('import_errors');
       let rowCounter = 0;
       let errorCounter = 0;
 
@@ -172,7 +203,10 @@ export default function AdminDatabasePage() {
           try {
             rowCounter++;
             const rawData = results.data;
-            if (!rawData.id && tableName !== 'fueros_x_juzgados') {
+            
+            const hasId = Object.keys(rawData).some(k => k.toLowerCase() === 'id');
+
+            if (!hasId && tableName !== 'fueros_x_juzgados') {
                 throw new Error('La fila no tiene una columna "id".');
             }
 
@@ -292,11 +326,11 @@ export default function AdminDatabasePage() {
                     return {
                         ...row,
                         provinciaId: provincia?.id || null,
-                        dependencia: provincia?.nombre || null,
+                        dependencia: provincia?.nombre || null, // `dependencia` is the provincia name
                         departamentoId: departamento?.id || null,
                         departamentoNombre: departamento?.nombre || null,
                         ciudadId: ciudad?.id || null,
-                        ciudad: ciudad?.nombre || null,
+                        ciudad: ciudad?.nombre || null, // `ciudad` is the ciudad name
                     };
                 }
             } else if (tableName === 'fueros_x_juzgados') {
@@ -382,27 +416,6 @@ export default function AdminDatabasePage() {
     }
   };
 
-  const FileInputBox = ({ id }: { id: string }) => (
-    <div
-      className={`relative border-2 border-dashed rounded-lg p-3 flex flex-col justify-center items-center text-center cursor-pointer transition-colors ${files[id] ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
-      onClick={() => fileInputRefs.current[id]?.click()}
-    >
-      <input type="file" accept=".csv" ref={el => fileInputRefs.current[id] = el} onChange={(e) => handleFileChange(e, id)} className="hidden" />
-      {files[id] ? (
-        <>
-          <FileCheck className="h-6 w-6 text-primary mb-1" />
-          <p className="font-semibold text-primary text-xs truncate max-w-full" title={files[id]?.name}>{files[id]?.name}</p>
-        </>
-      ) : (
-        <>
-          <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-          <p className="font-semibold text-xs">{id}</p>
-          <p className="text-xs text-muted-foreground">(.csv)</p>
-        </>
-      )}
-    </div>
-  );
-
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Gestión de Base de Datos</h2>
@@ -411,16 +424,49 @@ export default function AdminDatabasePage() {
         <CardHeader>
           <CardTitle>Carga Masiva de Datos desde CSV</CardTitle>
           <CardDescription>
-            Importe la base de datos completa subiendo los {orderedTables.length} archivos CSV correspondientes. El proceso se realiza por lotes para manejar grandes volúmenes de datos de forma segura.
+            Seleccione o arrastre los {orderedTables.length} archivos CSV para importar la base de datos completa. El sistema los identificará por su nombre.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {orderedTables.map(table => (
-              <FileInputBox key={table} id={table} />
-            ))}
+          <div
+            onDrop={handleDrop}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onDragEnter={() => setIsDragging(true)}
+            onDragLeave={() => setIsDragging(false)}
+            className={cn(
+              "relative border-2 border-dashed rounded-lg p-10 flex flex-col justify-center items-center text-center cursor-pointer transition-colors hover:border-primary/50",
+              isDragging ? "border-primary bg-primary/10" : "bg-accent/5"
+            )}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input type="file" accept=".csv" multiple ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+            <Upload className="h-10 w-10 text-muted-foreground mb-4" />
+            <p className="font-semibold">Arrastra y suelta tus archivos CSV aquí</p>
+            <p className="text-sm text-muted-foreground">o haz clic para seleccionar los archivos</p>
           </div>
           
+          <div className="mt-6">
+            <h3 className="font-semibold">Archivos Requeridos ({filesFoundCount} de {orderedTables.length})</h3>
+            <Card className="mt-2">
+              <CardContent className="p-4 max-h-48 overflow-y-auto">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-2 text-sm">
+                  {orderedTables.map(table => (
+                    <div key={table} className="flex items-center gap-2">
+                      {files[table] ? (
+                        <Check className="h-4 w-4 text-green-500 shrink-0" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-500 shrink-0" />
+                      )}
+                      <span className={cn("truncate", !files[table] && "text-muted-foreground")}>
+                        {table}.csv
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-4 border-t mt-6">
             <Button onClick={handleImportData} disabled={!allFilesSelected || isImporting || isDeleting} size="lg">
               {isImporting ? (
@@ -518,5 +564,3 @@ export default function AdminDatabasePage() {
     </div>
   );
 }
-
-    
