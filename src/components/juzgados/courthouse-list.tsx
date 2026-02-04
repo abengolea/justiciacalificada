@@ -11,9 +11,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CourthouseCard } from "./courthouse-card";
+import { CourthouseListItem } from "./courthouse-list-item";
 import type { Courthouse, Rating } from "@/lib/types";
 import { ratingCategories } from "@/lib/types";
-import { Search, SortAsc } from "lucide-react";
+import { Search, SortAsc, LayoutGrid, List } from "lucide-react";
 import { provincias } from "@/lib/data";
 import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
 import { collection, collectionGroup } from "firebase/firestore";
@@ -27,6 +28,7 @@ interface Fuero { id: string; nombre: string; }
 
 export default function CourthouseList() {
   const [isClient, setIsClient] = useState(false);
+  const [view, setView] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     setIsClient(true);
@@ -95,7 +97,7 @@ export default function CourthouseList() {
       return ratingStats.get(courthouseId)?.count ?? 0;
   }
   
-  const processedCourthouses = useMemo(() => {
+  const processedAndSortedCourthouses = useMemo(() => {
     if (!courthouses) return [];
     
     let filtered = courthouses.filter((courthouse) => {
@@ -122,7 +124,6 @@ export default function CourthouseList() {
         return courthouseText && searchWords.every((word) => courthouseText.includes(word));
     });
 
-    // Now, sort the filtered results
     return filtered.sort((a, b) => {
         switch (sortBy) {
             case 'rating-desc':
@@ -138,6 +139,20 @@ export default function CourthouseList() {
 
   }, [courthouses, searchTerm, dependenciaFilter, fueroFilter, sortBy, ratingStats]);
 
+  const groupedCourthouses = useMemo(() => {
+    if (view !== 'list') return null;
+
+    return processedAndSortedCourthouses.reduce((acc, courthouse) => {
+        const groupKey = courthouse.dependencia || 'Sin Dependencia';
+        if (!acc[groupKey]) {
+            acc[groupKey] = [];
+        }
+        acc[groupKey].push(courthouse);
+        return acc;
+    }, {} as Record<string, Courthouse[]>);
+
+  }, [processedAndSortedCourthouses, view]);
+
 
   const isLoading = isLoadingCourthouses || isLoadingRatings || isLoadingAdmin || isLoadingFueros;
   const showLoading = !isClient || isLoading;
@@ -148,8 +163,8 @@ export default function CourthouseList() {
   return (
     <div>
       <div className="mb-6 p-4 bg-card rounded-lg border">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative md:col-span-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="relative lg:col-span-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder="Buscar por nombre, ciudad..."
@@ -196,25 +211,61 @@ export default function CourthouseList() {
             </SelectContent>
           </Select>
         </div>
+        <div className="flex justify-end items-center mt-4">
+            <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                <Button variant={view === 'grid' ? 'default' : 'ghost'} size="sm" onClick={() => setView('grid')} className="h-8 px-3">
+                    <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button variant={view === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setView('list')} className="h-8 px-3">
+                    <List className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div>
         {showLoading ? (
-          [...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
-              <CardContent><Skeleton className="h-4 w-1/2" /></CardContent>
-              <CardFooter><Skeleton className="h-8 w-full" /></CardFooter>
-            </Card>
-          ))
-        ) : processedCourthouses.length > 0 ? (
-          processedCourthouses.map((courthouse) => (
-            <CourthouseCard
-              key={courthouse.id}
-              courthouse={courthouse}
-              averageRating={getAverageRating(courthouse.id)}
-              ratingCount={getRatingCount(courthouse.id)}
-            />
-          ))
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                    <Card key={i}>
+                    <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+                    <CardContent><Skeleton className="h-4 w-1/2" /></CardContent>
+                    <CardFooter><Skeleton className="h-8 w-full" /></CardFooter>
+                    </Card>
+                ))}
+             </div>
+        ) : (processedAndSortedCourthouses.length > 0 ? (
+            view === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {processedAndSortedCourthouses.map((courthouse) => (
+                        <CourthouseCard
+                        key={courthouse.id}
+                        courthouse={courthouse}
+                        averageRating={getAverageRating(courthouse.id)}
+                        ratingCount={getRatingCount(courthouse.id)}
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    {groupedCourthouses && Object.keys(groupedCourthouses).sort().map(groupName => (
+                        <div key={groupName}>
+                            <h2 className="text-xl font-bold font-headline text-primary mb-3 pb-2 border-b">{groupName}</h2>
+                            <div className="border rounded-lg">
+                                 {groupedCourthouses[groupName].map((courthouse, index) => (
+                                     <div key={courthouse.id}>
+                                        <CourthouseListItem
+                                            courthouse={courthouse}
+                                            averageRating={getAverageRating(courthouse.id)}
+                                            ratingCount={getRatingCount(courthouse.id)}
+                                        />
+                                        {index < groupedCourthouses[groupName].length - 1 && <div className="border-b mx-3"></div>}
+                                     </div>
+                                 ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )
         ) : (
           <div className="col-span-full text-center py-10">
             { isAnyFilterActive ? (
@@ -238,7 +289,7 @@ export default function CourthouseList() {
              )
             }
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
