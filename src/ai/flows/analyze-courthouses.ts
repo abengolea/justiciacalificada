@@ -46,12 +46,12 @@ const prompt = ai.definePrompt({
   1.  **Errores tipográficos en los nombres:** Busca abreviaturas inconsistentes (N°, n°, Nro), errores comunes ("No" en lugar de "en lo").
   2.  **Formato de nombres:** Estandariza la capitalización y el formato. Por ejemplo, "Sala N° 1" debería ser consistente.
   3.  **Relaciones geográficas:** Valida que la ciudad y la dependencia (provincia) sean lógicas. No tienes la lista completa de ciudades por provincia, pero puedes inferir errores si ves algo muy extraño.
-  4.  **Caracteres extraños:** Detecta y sugiere eliminar caracteres como tabulaciones (\t) o saltos de línea al final de los nombres.
+  4.  **Caracteres extraños:** Detecta y sugiere eliminar caracteres como tabulaciones (\\t) o saltos de línea al final de los nombres.
 
   Juzgados a analizar:
   {{{courthouses}}}
 
-  Devuelve un array de objetos de corrección con los campos: courthouseId, fieldName, currentValue, issueDescription, suggestedValue. Si no encuentras errores, devuelve un array vacío.`,
+  Devuelve un objeto JSON con una única clave "corrections", que contenga un array de objetos de corrección. Cada objeto debe tener los campos: courthouseId, fieldName, currentValue, issueDescription, suggestedValue. Si no encuentras errores, el array debe estar vacío.`,
 });
 
 const analyzeCourthousesFlow = ai.defineFlow(
