@@ -197,7 +197,7 @@ export default function AdminDatabasePage() {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        trimHeaders: true,
+        transformHeader: header => header.toLowerCase().trim(),
         worker: false, // Must be false to use pause/resume
         step: async (results: ParseResult<any>, parser) => {
           parser.pause();
@@ -205,7 +205,7 @@ export default function AdminDatabasePage() {
             rowCounter++;
             const rawData = results.data;
             
-            const hasId = Object.keys(rawData).some(k => k.toLowerCase() === 'id');
+            const hasId = 'id' in rawData;
 
             if (!hasId && tableName !== 'fueros_x_juzgados') {
                 throw new Error('La fila no tiene una columna "id".');
@@ -213,6 +213,11 @@ export default function AdminDatabasePage() {
 
             const processedData = onData(rawData, memoryMaps);
             const docId = getId(rawData);
+
+            if (!docId || docId === 'undefined' || docId === 'null') {
+              throw new Error(`ID de documento inválido para la fila: ${JSON.stringify(rawData)}`);
+            }
+
             const docRef = doc(firestore, tableName, docId);
             await batchHandler.add(docRef, processedData);
 
@@ -282,13 +287,13 @@ export default function AdminDatabasePage() {
             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
-                trimHeaders: true,
+                transformHeader: header => header.toLowerCase().trim(),
                 worker: false,
                 step: (results) => {
                     const row = results.data as any;
-                    const idKey = Object.keys(row).find(k => k.toLowerCase() === key);
-                    if(idKey && row[idKey]) {
-                        map.set(String(row[idKey]), row);
+                    const idKey = row[key];
+                    if(idKey) {
+                        map.set(String(idKey).trim(), row);
                         count++;
                     }
                 },
@@ -317,25 +322,24 @@ export default function AdminDatabasePage() {
             }
 
             let onData = (row: any) => row;
-            let getId = (row: any) => String(row.id);
+            let getId = (row: any) => String(row.id).trim();
 
             if (tableName === 'juzgados') {
                 onData = (row, maps) => {
-                    const ciudad = maps.ciudades.get(row.id_ciudad);
-                    const departamento = maps.departamentos.get(row.id_departamento);
-                    const provincia = departamento ? maps.provincias.get(departamento.id_provincia) : null;
-                    const fuero = maps.fueros.get(row.id_fuero);
+                    const ciudad = row.id_ciudad ? maps.ciudades.get(String(row.id_ciudad).trim()) : null;
+                    const departamento = row.id_departamento ? maps.departamentos.get(String(row.id_departamento).trim()) : null;
+                    const provincia = departamento ? maps.provincias.get(String(departamento.id_provincia).trim()) : null;
+                    const fuero = row.id_fuero ? maps.fueros.get(String(row.id_fuero).trim()) : null;
 
                     return {
-                        id: String(row.id),
+                        id: String(row.id).trim(),
                         nombre: row.nombre || null,
                         dependencia: provincia?.nombre || row.dependencia || null,
-                        ciudad: ciudad?.nombre || row.ciudad || null,
+                        ciudad: ciudad?.nombre || null,
                         fuero: fuero?.nombre || null,
                         instancia: row.instancia || null,
                         direccion: row.direccion || null,
                         telefono: row.telefono || null,
-                        // Keep original geo IDs for reference if needed
                         provinciaId: provincia?.id || null,
                         departamentoId: departamento?.id || null,
                         ciudadId: ciudad?.id || null,
@@ -344,20 +348,19 @@ export default function AdminDatabasePage() {
                 }
             } else if (tableName === 'fueros_x_juzgados') {
                  onData = (row, maps) => {
-                    const juzgado = memoryMaps.juzgados.get(row.id_juzgado);
-                    const fuero = maps.fueros.get(row.id_fuero);
+                    const juzgado = memoryMaps.juzgados.get(String(row.id_juzgado).trim());
+                    const fuero = maps.fueros.get(String(row.id_fuero).trim());
                     return {
                       ...row,
                       juzgadoNombre: juzgado?.nombre || null,
                       fueroNombre: fuero?.nombre || null,
                     }
                  };
-                 getId = (row: any) => `${row.id_juzgado}_${row.id_fuero}`;
+                 getId = (row: any) => `${String(row.id_juzgado).trim()}_${String(row.id_fuero).trim()}`;
             }
 
             await genericImport(tableName, file, memoryMaps, onData, getId);
 
-            // If the current table is one that others depend on for denormalization, build its map now.
             if(tableName === 'juzgados') {
               await mapBuilder('juzgados', files.juzgados!);
             }
@@ -408,8 +411,6 @@ export default function AdminDatabasePage() {
         addLog('Todas las colecciones especificadas han sido limpiadas.', 'success');
         toast({ title: 'Base de Datos Limpia', description: 'Se han eliminado todas las colecciones importadas.' });
     } catch (e: any) {
-        // The batchHandler will emit its own contextual error.
-        // This catch block is primarily for errors during getDocs.
         if (!(e instanceof FirestorePermissionError)) {
             const permissionError = new FirestorePermissionError({
                 path: '(unknown collection during delete)',
@@ -573,5 +574,3 @@ export default function AdminDatabasePage() {
     </div>
   );
 }
-
-    
