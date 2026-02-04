@@ -6,6 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Star, MapPin, PenSquare } from "lucide-react";
 import type { Courthouse } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CourthouseCardProps {
   courthouse: Courthouse;
@@ -53,12 +59,21 @@ export function CourthouseCard({ courthouse, averageRating, ratingCount }: Court
           </div>
         </CardContent>
         <CardFooter className="pt-4 justify-end">
-            <Button asChild size="sm">
-                <Link href={`/juzgados/${courthouse.id}`}>
-                    <PenSquare className="mr-2" />
-                    Calificar
-                </Link>
-            </Button>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button asChild size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                            <Link href={`/juzgados/${courthouse.id}`}>
+                                <PenSquare className="h-5 w-5" />
+                                <span className="sr-only">Calificar</span>
+                            </Link>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Calificar juzgado</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         </CardFooter>
       </Card>
   );
