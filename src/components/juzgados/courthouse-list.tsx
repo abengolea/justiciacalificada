@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -12,12 +12,12 @@ import {
 } from "@/components/ui/select";
 import { CourthouseCard } from "./courthouse-card";
 import { CourthouseListItem } from "./courthouse-list-item";
-import type { Courthouse, Rating } from "@/lib/types";
+import type { Courthouse, Rating, Lawyer } from "@/lib/types";
 import { ratingCategories } from "@/lib/types";
 import { Search, SortAsc, LayoutGrid, List } from "lucide-react";
 import { provincias } from "@/lib/data";
-import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
-import { collection, collectionGroup } from "firebase/firestore";
+import { useCollection, useFirebase, useMemoFirebase, useUser } from "@/firebase";
+import { collection, collectionGroup, doc, getDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { useAdminStatus } from "@/hooks/use-admin-status";
@@ -35,6 +35,9 @@ export default function CourthouseList() {
   }, []);
 
   const { firestore } = useFirebase();
+  const { user, isUserLoading } = useUser();
+  const [lawyerProfile, setLawyerProfile] = useState<Lawyer | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const courthousesQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'juzgados') : null), [firestore]);
   const { data: courthouses, isLoading: isLoadingCourthouses } = useCollection<Courthouse>(courthousesQuery);
@@ -51,11 +54,39 @@ export default function CourthouseList() {
   const [dependenciaFilter, setDependenciaFilter] = useState("all");
   const [fueroFilter, setFueroFilter] = useState("all");
   const [sortBy, setSortBy] = useState("rating-desc"); // Default sort
-
+  
+  const defaultFilterApplied = useRef(false);
+  
   const dependenciasList = useMemo(
     () => ["all", ...provincias.sort()],
     []
   );
+
+  useEffect(() => {
+    if (isUserLoading) return;
+    
+    if (!user) {
+      setProfileLoading(false);
+      return;
+    }
+
+    const lawyerDocRef = doc(firestore, 'lawyers', user.uid);
+    getDoc(lawyerDocRef).then(docSnap => {
+      if (docSnap.exists()) {
+        const profile = docSnap.data() as Lawyer;
+        setLawyerProfile(profile);
+        
+        if (profile.provincia && !defaultFilterApplied.current) {
+          if (dependenciasList.includes(profile.provincia)) {
+            setDependenciaFilter(profile.provincia);
+          }
+          defaultFilterApplied.current = true;
+        }
+      }
+      setProfileLoading(false);
+    }).catch(() => setProfileLoading(false));
+
+  }, [user, isUserLoading, firestore, dependenciasList]);
 
   const fuerosList = useMemo(
     () => ["all", ...Array.from(new Set((fueros || []).map((f) => f.nombre).filter(Boolean))).sort()],
@@ -154,7 +185,7 @@ export default function CourthouseList() {
   }, [processedAndSortedCourthouses, view]);
 
 
-  const isLoading = isLoadingCourthouses || isLoadingRatings || isLoadingAdmin || isLoadingFueros;
+  const isLoading = isLoadingCourthouses || isLoadingRatings || isLoadingAdmin || isLoadingFueros || profileLoading;
   const showLoading = !isClient || isLoading;
 
   const isAnyFilterActive = searchTerm !== '' || dependenciaFilter !== 'all' || fueroFilter !== 'all';
@@ -163,6 +194,11 @@ export default function CourthouseList() {
   return (
     <div>
       <div className="mb-6 p-4 bg-card rounded-lg border">
+         {lawyerProfile?.provincia && defaultFilterApplied.current && dependenciaFilter === lawyerProfile.provincia && (
+            <div className="mb-4 text-sm text-muted-foreground p-2 rounded-md bg-accent/20 border border-accent/50">
+                Mostrando juzgados para <strong>{lawyerProfile.provincia}</strong> por defecto. Cambia el filtro para ver otros.
+            </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="relative lg:col-span-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />

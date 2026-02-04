@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -27,6 +27,13 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -39,6 +46,8 @@ import { useToast } from '@/hooks/use-toast';
 import {
   useFirebase,
   addDocumentNonBlocking,
+  useCollection,
+  useMemoFirebase,
 } from '@/firebase';
 import {
   User,
@@ -50,7 +59,6 @@ import {
 import { doc, serverTimestamp, collection, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { es } from 'date-fns/locale';
-
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -67,9 +75,15 @@ fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
 const MAX_FILE_SIZE = 5000000; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
+type Provincia = { id: string; nombre: string; };
+type Departamento = { id: string; nombre: string; id_provincia: string; };
+type Ciudad = { id: string; nombre: string; id_departamento: string; };
+
 const formSchema = z.object({
   nombre: z.string().min(2, { message: 'El nombre es requerido.' }),
   apellido: z.string().min(2, { message: 'El apellido es requerido.' }),
+  provincia: z.string({ required_error: 'La provincia es requerida.' }).min(1, 'La provincia es requerida.'),
+  ciudad: z.string({ required_error: 'La ciudad es requerida.' }).min(1, 'La ciudad es requerida.'),
   matricula: z
     .string()
     .min(1, { message: 'La matrícula es requerida.' }),
@@ -108,12 +122,38 @@ export default function RegisterPage() {
     defaultValues: {
       nombre: '',
       apellido: '',
+      provincia: '',
+      ciudad: '',
       matricula: '',
       email: '',
       password: '',
       credencial: undefined,
     },
   });
+
+  const provinciasQuery = useMemoFirebase(() => collection(firestore, 'provincias'), [firestore]);
+  const { data: provincias } = useCollection<Provincia>(provinciasQuery);
+
+  const departamentosQuery = useMemoFirebase(() => collection(firestore, 'departamentos'), [firestore]);
+  const { data: departamentos } = useCollection<Departamento>(departamentosQuery);
+
+  const ciudadesQuery = useMemoFirebase(() => collection(firestore, 'ciudades'), [firestore]);
+  const { data: ciudades } = useCollection<Ciudad>(ciudadesQuery);
+
+  const selectedProvincia = form.watch('provincia');
+
+  const filteredCiudades = useMemo(() => {
+    if (!selectedProvincia || !departamentos || !ciudades || !provincias) return [];
+    
+    const selectedProvinciaDoc = provincias.find(p => p.nombre === selectedProvincia);
+    if (!selectedProvinciaDoc) return [];
+
+    const deparmentosInProvincia = departamentos.filter(d => d.id_provincia === selectedProvinciaDoc.id);
+    const departmentIds = new Set(deparmentosInProvincia.map(d => d.id));
+
+    return ciudades.filter(c => departmentIds.has(c.id_departamento)).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [selectedProvincia, provincias, departamentos, ciudades]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -143,6 +183,8 @@ export default function RegisterPage() {
         nombre: values.nombre,
         apellido: values.apellido,
         email: values.email,
+        provincia: values.provincia,
+        ciudad: values.ciudad,
         matricula: values.matricula,
         fechaMatriculacion: values.fechaMatriculacion.toISOString(),
         credencialUrl: credencialUrl,
@@ -165,6 +207,7 @@ export default function RegisterPage() {
                     <li><strong>Nombre:</strong> ${values.nombre} ${values.apellido}</li>
                     <li><strong>Email:</strong> ${values.email}</li>
                     <li><strong>Matrícula:</strong> ${values.matricula}</li>
+                    <li><strong>Ubicación:</strong> ${values.ciudad}, ${values.provincia}</li>
                 </ul>
                 <p>Por favor, ingrese al <a href="https://qualified-justice.web.app/admin/usuarios">panel de administración</a> para revisar la solicitud.</p>
             `,
@@ -226,7 +269,7 @@ export default function RegisterPage() {
   
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
-    const isValid = await form.trigger(['nombre', 'apellido', 'matricula', 'fechaMatriculacion', 'email', 'credencial']);
+    const isValid = await form.trigger();
     if (!isValid) {
         toast({
             title: "Formulario incompleto",
@@ -279,6 +322,8 @@ export default function RegisterPage() {
             nombre: values.nombre,
             apellido: values.apellido,
             email: user.email!,
+            provincia: values.provincia,
+            ciudad: values.ciudad,
             matricula: values.matricula,
             fechaMatriculacion: values.fechaMatriculacion.toISOString(),
             credencialUrl: credencialUrl,
@@ -294,7 +339,7 @@ export default function RegisterPage() {
         
         const adminMailData = {
             to: ['justiciacalificada@gmail.com'],
-            message: { subject: `Nuevo Registro (Google) Pendiente: ${values.nombre} ${values.apellido}`, html: `<p>Un nuevo abogado se ha registrado con Google y está esperando aprobación.</p><ul><li><strong>Nombre:</strong> ${values.nombre} ${values.apellido}</li><li><strong>Email:</strong> ${user.email}</li><li><strong>Matrícula:</strong> ${values.matricula}</li></ul><p>Por favor, ingrese al <a href="https://qualified-justice.web.app/admin/usuarios">panel de administración</a> para revisar la solicitud.</p>` },
+            message: { subject: `Nuevo Registro (Google) Pendiente: ${values.nombre} ${values.apellido}`, html: `<p>Un nuevo abogado se ha registrado con Google y está esperando aprobación.</p><ul><li><strong>Nombre:</strong> ${values.nombre} ${values.apellido}</li><li><strong>Email:</strong> ${user.email}</li><li><strong>Matrícula:</strong> ${values.matricula}</li><li><strong>Ubicación:</strong> ${values.ciudad}, ${values.provincia}</li></ul><p>Por favor, ingrese al <a href="https://qualified-justice.web.app/admin/usuarios">panel de administración</a> para revisar la solicitud.</p>` },
         };
         addDocumentNonBlocking(mailCollectionRef, adminMailData);
         
@@ -337,7 +382,7 @@ export default function RegisterPage() {
 
   return (
     <div className="container flex items-center justify-center py-12">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle className="text-2xl font-headline">
             Registro de Abogado
@@ -373,6 +418,56 @@ export default function RegisterPage() {
                       <FormControl>
                         <Input placeholder="Pérez" {...field} disabled={isLoading || isGoogleLoading}/>
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                 <FormField
+                  control={form.control}
+                  name="provincia"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Provincia</FormLabel>
+                        <Select onValueChange={(value) => {
+                            field.onChange(value)
+                            form.resetField('ciudad');
+                        }} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger disabled={isLoading || isGoogleLoading || !provincias}>
+                            <SelectValue placeholder="Seleccione su provincia" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {provincias?.sort((a,b) => a.nombre.localeCompare(b.nombre)).map(p => (
+                            <SelectItem key={p.id} value={p.nombre}>{p.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="ciudad"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ciudad</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger disabled={isLoading || isGoogleLoading || !selectedProvincia || filteredCiudades.length === 0}>
+                            <SelectValue placeholder="Seleccione su ciudad" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                           {filteredCiudades.map(c => (
+                            <SelectItem key={c.id} value={c.nombre}>{c.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

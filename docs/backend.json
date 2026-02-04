@@ -22,6 +22,14 @@
           "format": "email",
           "description": "Email address, used for login."
         },
+        "provincia": {
+          "type": "string",
+          "description": "The province where the lawyer primarily practices."
+        },
+        "ciudad": {
+          "type": "string",
+          "description": "The city where the lawyer primarily practices."
+        },
         "matricula": {
           "type": "string",
           "description": "Professional license number of the lawyer."
@@ -64,6 +72,8 @@
         "nombre",
         "apellido",
         "email",
+        "provincia",
+        "ciudad",
         "matricula",
         "fechaMatriculacion",
         "credencialUrl",

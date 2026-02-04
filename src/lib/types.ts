@@ -1,4 +1,5 @@
 
+
 export interface Courthouse {
   id: string;
   nombre: string;
@@ -62,6 +63,8 @@ export interface Lawyer {
   nombre: string;
   apellido: string;
   email: string;
+  provincia?: string;
+  ciudad?: string;
   matricula: string;
   fechaMatriculacion: string; // ISO date string
   credencialUrl: string;
