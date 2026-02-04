@@ -1,4 +1,3 @@
-
 'use client';
 
 import { notFound, useParams } from "next/navigation";
@@ -35,12 +34,6 @@ import { useDoc, useCollection, useFirebase, useMemoFirebase } from "@/firebase"
 import { doc, collection } from "firebase/firestore";
 import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface CourthouseDetailPageProps {
-  params: {
-    id: string;
-  };
-}
 
 const iconMap: Record<keyof RatingCategories, React.ReactNode> = {
   calidadResoluciones: <Gavel className="h-5 w-5 mr-2 text-primary" />,
@@ -105,9 +98,10 @@ function getAverageRatings(ratings: Rating[]) {
   return { averages, overallAverage };
 }
 
-export default function CourthouseDetailPage({ params }: CourthouseDetailPageProps) {
+export default function CourthouseDetailPage() {
+  const params = useParams();
   const { firestore } = useFirebase();
-  const courthouseId = params.id;
+  const courthouseId = params.id as string;
 
   const courthouseDocRef = useMemoFirebase(() => doc(firestore, 'juzgados', courthouseId), [firestore, courthouseId]);
   const { data: courthouse, isLoading: isLoadingCourthouse } = useDoc<Courthouse>(courthouseDocRef);
