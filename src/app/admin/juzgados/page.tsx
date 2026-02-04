@@ -197,6 +197,7 @@ export default function AdminDatabasePage() {
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
+        trimHeaders: true,
         worker: false, // Must be false to use pause/resume
         step: async (results: ParseResult<any>, parser) => {
           parser.pause();
@@ -281,6 +282,7 @@ export default function AdminDatabasePage() {
             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
+                trimHeaders: true,
                 worker: false,
                 step: (results) => {
                     const row = results.data as any;
@@ -329,7 +331,7 @@ export default function AdminDatabasePage() {
                         nombre: row.nombre || null,
                         dependencia: provincia?.nombre || row.dependencia || null,
                         ciudad: ciudad?.nombre || row.ciudad || null,
-                        fuero: fuero?.nombre || row.fuero || null,
+                        fuero: fuero?.nombre || null,
                         instancia: row.instancia || null,
                         direccion: row.direccion || null,
                         telefono: row.telefono || null,
