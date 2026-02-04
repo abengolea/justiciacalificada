@@ -13,8 +13,7 @@ interface CourthouseCardProps {
 }
 
 export function CourthouseCard({ courthouse, averageRating, ratingCount }: CourthouseCardProps) {
-  const locationText = [courthouse.ciudad, courthouse.dependencia].filter(Boolean).join(', ');
-
+  
   return (
     <Link href={`/juzgados/${courthouse.id}`} className="h-full">
       <Card className="flex flex-col h-full hover:border-primary transition-colors duration-200">
@@ -37,10 +36,10 @@ export function CourthouseCard({ courthouse, averageRating, ratingCount }: Court
               </span>
             </div>
           </div>
-          {locationText && (
+          {courthouse.ciudad && (
             <CardDescription className="flex items-center gap-2 pt-2 text-muted-foreground">
               <MapPin className="w-4 h-4 shrink-0" />
-              <span>{locationText}</span>
+              <span>{courthouse.ciudad}</span>
             </CardDescription>
           )}
         </CardHeader>
@@ -48,7 +47,8 @@ export function CourthouseCard({ courthouse, averageRating, ratingCount }: Court
           {/* Content if needed */}
         </CardContent>
         <CardFooter>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 text-xs">
+            {courthouse.dependencia && <Badge variant="default">{courthouse.dependencia}</Badge>}
             {courthouse.fuero && <Badge variant="secondary">{courthouse.fuero}</Badge>}
             {courthouse.instancia && <Badge variant="outline">{courthouse.instancia}</Badge>}
           </div>
