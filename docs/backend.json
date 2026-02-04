@@ -188,7 +188,6 @@
         "courthouseId",
         "lawyerId",
         "puntuaciones",
-        "comentario",
         "fechaExperiencia",
         "fechaCalificacion",
         "status"

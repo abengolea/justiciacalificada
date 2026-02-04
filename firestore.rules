@@ -112,13 +112,27 @@ service cloud.firestore {
                              data.puntuaciones.practicidad >= 0 && data.puntuaciones.practicidad <= 10 &&
                              data.puntuaciones.capacitacionPersonal >= 0 && data.puntuaciones.capacitacionPersonal <= 10;
       
+      // Check that at least one rating score is provided OR a comment is made.
+      let hasContent = data.comentario.size() > 0 ||
+                       data.puntuaciones.calidadResoluciones > 0 ||
+                       data.puntuaciones.rapidezResoluciones > 0 ||
+                       data.puntuaciones.rapidezDespacho > 0 ||
+                       data.puntuaciones.atencionMesaEntradas > 0 ||
+                       data.puntuaciones.tratoProfesional > 0 ||
+                       data.puntuaciones.puntualidadAudiencias > 0 ||
+                       data.puntuaciones.ordenGeneral > 0 ||
+                       data.puntuaciones.tecnologia > 0 ||
+                       data.puntuaciones.practicidad > 0 ||
+                       data.puntuaciones.capacitacionPersonal > 0;
+
       return isOwner(data.lawyerId) &&
              data.courthouseId == juzgadoId &&
              data.status == 'pending' &&
              data.fechaCalificacion == request.time &&
-             data.comentario is string && data.comentario.size() >= 10 && data.comentario.size() <= 500 &&
+             data.comentario is string && data.comentario.size() <= 500 &&
              data.fechaExperiencia is string &&
-             hasValidPuntuaciones;
+             hasValidPuntuaciones &&
+             hasContent;
     }
 
     function areRatingFieldsImmutable() {
