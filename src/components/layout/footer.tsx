@@ -3,31 +3,10 @@
 import { AppLogo } from "@/components/icons";
 import Link from "next/link";
 import { Shield } from "lucide-react";
-import { useUser, useFirebase } from "@/firebase";
-import { doc, getDoc } from "firebase/firestore";
-import { useState, useEffect } from "react";
+import { useAdminStatus } from "@/hooks/use-admin-status";
 
 export function SiteFooter() {
-  const { user } = useUser();
-  const { firestore } = useFirebase();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      const checkAdmin = async () => {
-        const lawyerRef = doc(firestore, 'lawyers', user.uid);
-        const lawyerDoc = await getDoc(lawyerRef);
-        if (lawyerDoc.exists() && lawyerDoc.data().role === 'admin') {
-          setIsAdmin(true);
-        } else {
-          setIsAdmin(false);
-        }
-      };
-      checkAdmin();
-    } else {
-      setIsAdmin(false);
-    }
-  }, [user, firestore]);
+  const { isAdmin } = useAdminStatus();
 
   return (
     <footer className="border-t">
