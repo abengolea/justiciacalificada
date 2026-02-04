@@ -141,7 +141,6 @@ export default function AdminDatabasePage() {
     if (!selectedFiles) return;
   
     const newFileState: FileState = { ...files };
-    let filesFound = 0;
   
     Array.from(selectedFiles).forEach(file => {
       if (!file.name.toLowerCase().endsWith('.csv')) {
@@ -154,7 +153,7 @@ export default function AdminDatabasePage() {
       }
     });
 
-    filesFound = Object.values(newFileState).filter(Boolean).length;
+    const filesFound = Object.values(newFileState).filter(Boolean).length;
   
     setFiles(newFileState);
     toast({
@@ -323,15 +322,22 @@ export default function AdminDatabasePage() {
                     const ciudad = maps.ciudades.get(row.id_ciudad);
                     const departamento = maps.departamentos.get(row.id_departamento);
                     const provincia = departamento ? maps.provincias.get(departamento.id_provincia) : null;
-                    
+                    const fuero = maps.fueros.get(row.id_fuero);
+
                     return {
-                        ...row,
+                        id: String(row.id),
+                        nombre: row.nombre || null,
+                        dependencia: provincia?.nombre || row.dependencia || null,
+                        ciudad: ciudad?.nombre || row.ciudad || null,
+                        fuero: fuero?.nombre || row.fuero || null,
+                        instancia: row.instancia || null,
+                        direccion: row.direccion || null,
+                        telefono: row.telefono || null,
+                        // Keep original geo IDs for reference if needed
                         provinciaId: provincia?.id || null,
-                        dependencia: provincia?.nombre || null, // `dependencia` is the provincia name
                         departamentoId: departamento?.id || null,
-                        departamentoNombre: departamento?.nombre || null,
                         ciudadId: ciudad?.id || null,
-                        ciudad: ciudad?.nombre || null, // `ciudad` is the ciudad name
+                        id_fuero: row.id_fuero || null,
                     };
                 }
             } else if (tableName === 'fueros_x_juzgados') {
@@ -564,5 +570,6 @@ export default function AdminDatabasePage() {
       </Card>
     </div>
   );
+}
 
     
