@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from "@/components/ui/input";
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase } from '@/firebase';
+import { useFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -65,6 +65,16 @@ export default function LoginPage() {
 
     if (lawyerProfileDoc.exists()) {
         const lawyerData = lawyerProfileDoc.data();
+        
+        // For testing purposes, set the location for a specific user.
+        if (user.email === 'goyitobengolea@gmail.com') {
+          if (lawyerData.ciudad !== 'San Nicolas de los Arroyos' || lawyerData.provincia !== 'Buenos Aires') {
+            updateDocumentNonBlocking(lawyerProfileRef, {
+              ciudad: 'San Nicolas de los Arroyos',
+              provincia: 'Buenos Aires'
+            });
+          }
+        }
         
         if (lawyerData.role === 'admin') {
             toast({
