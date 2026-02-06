@@ -114,6 +114,10 @@
         "telefono": {
           "type": "string",
           "description": "Phone number of the courthouse."
+        },
+        "localidadId": {
+          "type": "number",
+          "description": "The ID of the city/locality."
         }
       },
       "required": [
@@ -234,6 +238,60 @@
         "averageByCategory",
         "lastUpdated"
       ]
+    },
+    "ArbitrarySentence": {
+      "title": "Arbitrary Sentence",
+      "description": "Represents a judicial sentence that has been declared arbitrary by a higher court.",
+      "type": "object",
+      "properties": {
+        "lawyerId": {
+          "type": "string",
+          "description": "The UID of the lawyer who submitted the case."
+        },
+        "courthouseId": {
+          "type": "string",
+          "description": "The ID of the courthouse that issued the original challenged sentence."
+        },
+        "caseDetails": {
+          "type": "object",
+          "properties": {
+            "caseNumber": { "type": "string" },
+            "caseYear": { "type": "number" },
+            "caseName": { "type": "string" }
+          },
+          "required": ["caseNumber", "caseYear", "caseName"],
+          "description": "Basic details to identify the court case."
+        },
+        "challengedSentenceUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the PDF of the original sentence that was challenged."
+        },
+        "rulingSentenceUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the PDF of the higher court's ruling declaring the original sentence arbitrary."
+        },
+        "submissionDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the case was submitted to the platform."
+        },
+        "status": {
+          "type": "string",
+          "description": "Moderation status of the submission.",
+          "enum": ["pending", "approved", "rejected"]
+        }
+      },
+      "required": [
+        "lawyerId",
+        "courthouseId",
+        "caseDetails",
+        "challengedSentenceUrl",
+        "rulingSentenceUrl",
+        "submissionDate",
+        "status"
+      ]
     }
   },
   "auth": {
@@ -313,6 +371,26 @@
             {
               "name": "statisticId",
               "description": "The unique identifier for the statistic. Should only ever be one document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/courthouses/{courthouseId}/arbitrary_sentences/{sentenceId}",
+        "definition": {
+          "entityName": "ArbitrarySentence",
+          "schema": {
+            "$ref": "#/backend/entities/ArbitrarySentence"
+          },
+          "description": "Stores submissions of sentences declared arbitrary for a specific courthouse. Lawyers can create, but only admins can approve/reject.",
+          "params": [
+            {
+              "name": "courthouseId",
+              "description": "The unique identifier for the courthouse that issued the original sentence."
+            },
+            {
+              "name": "sentenceId",
+              "description": "The unique identifier for the arbitrary sentence submission."
             }
           ]
         }
