@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Scale, Users, FileText, CheckCircle, Star } from "lucide-react";
+import { Scale, Users, FileText, CheckCircle, Star, Gavel } from "lucide-react";
 
 export default function Home() {
   return (
@@ -81,6 +81,55 @@ export default function Home() {
                     <CheckCircle className="mt-1 h-5 w-5 text-primary" />
                     <p className="text-muted-foreground text-left"><strong>Sin fines de lucro:</strong> Nuestro único objetivo es el bien común.</p>
                 </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-12 md:py-24 lg:py-32 bg-background">
+        <div className="container px-4 md:px-6">
+          <div className="grid gap-10 md:grid-cols-2 md:gap-16 items-center">
+            <div className="space-y-4">
+              <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm font-medium">
+                Nuevo Servicio
+              </div>
+              <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight font-headline text-primary">
+                Ranking de Sentencias Arbitrarias
+              </h2>
+              <p className="text-muted-foreground md:text-lg/relaxed">
+                Creamos un registro público y colaborativo de sentencias que han sido declaradas arbitrarias por tribunales superiores. Contribuya subiendo casos verificados y ayude a construir un mapa de la arbitrariedad en el sistema judicial.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 pt-2">
+                <Button asChild size="lg">
+                  <Link href="/ranking-arbitrariedad">Ver Ranking</Link>
+                </Button>
+                <Button asChild variant="secondary" size="lg">
+                  <Link href="/sentencias-arbitrarias/nueva">Cargar Sentencia</Link>
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-col items-start gap-6 rounded-lg bg-card border p-6">
+              <div className="flex items-start space-x-4">
+                <Gavel className="mt-1 h-6 w-6 text-primary shrink-0" />
+                <div>
+                    <h3 className="text-lg font-semibold">Transparencia Radical</h3>
+                    <p className="text-muted-foreground text-sm">Un registro abierto de decisiones judiciales que han sido revocadas por arbitrariedad manifiesta.</p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-4">
+                <CheckCircle className="mt-1 h-6 w-6 text-primary shrink-0" />
+                <div>
+                    <h3 className="text-lg font-semibold">Casos Verificados</h3>
+                    <p className="text-muted-foreground text-sm">Cada caso es revisado por un administrador para asegurar que la sentencia revocatoria sea auténtica y relevante.</p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-4">
+                <Users className="mt-1 h-6 w-6 text-primary shrink-0" />
+                <div>
+                    <h3 className="text-lg font-semibold">Aporte Comunitario</h3>
+                    <p className="text-muted-foreground text-sm">Construido colaborativamente por y para la comunidad de abogados comprometidos con la calidad institucional.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
