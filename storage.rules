@@ -11,5 +11,12 @@ service firebase.storage {
       // Por ahora, el acceso de lectura principal sería para los administradores desde la consola.
       allow read: if request.auth != null && request.auth.uid == uid;
     }
+    
+    // Permite a los abogados aprobados subir los PDF de las sentencias.
+    // La lectura de estos archivos es pública, ya que los enlaces se almacenarán en Firestore.
+    match /arbitrary_sentences/{sentenceId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && get(/databases/(default)/documents/lawyers/$(request.auth.uid)).data.status == 'approved';
+    }
   }
 }

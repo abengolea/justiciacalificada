@@ -9,6 +9,7 @@
  * - /courthouses/{courthouseId}: Publicly available information about courthouses.
  * - /courthouses/{courthouseId}/ratings/{ratingId}: User-submitted ratings, which are publicly readable.
  * - /courthouses/{courthouseId}/statistics/{statisticId}: Publicly readable, aggregated statistics, not writable by clients.
+ * - /courthouses/{courthouseId}/arbitrary_sentences/{sentenceId}: User-submitted sentences declared arbitrary by a higher court.
  *
  * Key Security Decisions:
  * - Strict Ownership: A lawyer's profile in `/lawyers` is strictly private and can only be accessed or modified by the owner, unless the user is an admin.
@@ -45,6 +46,10 @@ service cloud.firestore {
     function isAdmin() {
       // Check for the role in the user's own profile document.
       return isSignedIn() && get(/databases/$(database)/documents/lawyers/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isApprovedLawyer() {
+      return isSignedIn() && get(/databases/$(database)/documents/lawyers/$(request.auth.uid)).data.status == 'approved';
     }
 
     function isValidNewLawyer(uid) {
@@ -97,15 +102,57 @@ service cloud.firestore {
 
 
     function isValidNewRating(courthouseId) {
-      let data = request.resource.data;
-      return isSignedIn() &&
-             data.lawyerId == request.auth.uid &&
-             data.courthouseId == courthouseId;
+       let data = request.resource.data;
+       let hasValidPuntuaciones = data.puntuaciones.calidadResoluciones >= 0 && data.puntuaciones.calidadResoluciones <= 10 &&
+                             data.puntuaciones.rapidezResoluciones >= 0 && data.puntuaciones.rapidezResoluciones <= 10 &&
+                             data.puntuaciones.rapidezDespacho >= 0 && data.puntuaciones.rapidezDespacho <= 10 &&
+                             data.puntuaciones.atencionMesaEntradas >= 0 && data.puntuaciones.atencionMesaEntradas <= 10 &&
+                             data.puntuaciones.tratoProfesional >= 0 && data.puntuaciones.tratoProfesional <= 10 &&
+                             data.puntuaciones.puntualidadAudiencias >= 0 && data.puntuaciones.puntualidadAudiencias <= 10 &&
+                             data.puntuaciones.ordenGeneral >= 0 && data.puntuaciones.ordenGeneral <= 10 &&
+                             data.puntuaciones.tecnologia >= 0 && data.puntuaciones.tecnologia <= 10 &&
+                             data.puntuaciones.practicidad >= 0 && data.puntuaciones.practicidad <= 10 &&
+                             data.puntuaciones.capacitacionPersonal >= 0 && data.puntuaciones.capacitacionPersonal <= 10;
+      
+      // Check that at least one rating score is provided OR a comment is made.
+      let hasContent = data.comentario.size() > 0 ||
+                       data.puntuaciones.calidadResoluciones > 0 ||
+                       data.puntuaciones.rapidezResoluciones > 0 ||
+                       data.puntuaciones.rapidezDespacho > 0 ||
+                       data.puntuaciones.atencionMesaEntradas > 0 ||
+                       data.puntuaciones.tratoProfesional > 0 ||
+                       data.puntuaciones.puntualidadAudiencias > 0 ||
+                       data.puntuaciones.ordenGeneral > 0 ||
+                       data.puntuaciones.tecnologia > 0 ||
+                       data.puntuaciones.practicidad > 0 ||
+                       data.puntuaciones.capacitacionPersonal > 0;
+
+      return isOwner(data.lawyerId) &&
+             data.courthouseId == courthouseId &&
+             data.status == 'pending' &&
+             data.fechaCalificacion == request.time &&
+             data.comentario is string && data.comentario.size() <= 500 &&
+             data.fechaExperiencia is string &&
+             hasValidPuntuaciones &&
+             hasContent;
     }
 
     function areRatingFieldsImmutable() {
       return request.resource.data.lawyerId == resource.data.lawyerId &&
              request.resource.data.courthouseId == resource.data.courthouseId;
+    }
+    
+    function isValidNewArbitrarySentence(courthouseId) {
+      let data = request.resource.data;
+      return isOwner(data.lawyerId) &&
+             data.courthouseId == courthouseId &&
+             data.status == 'pending' &&
+             data.submissionDate == request.time &&
+             data.caseDetails.caseName is string &&
+             data.caseDetails.caseNumber is string &&
+             data.caseDetails.caseYear is number &&
+             data.challengedSentenceUrl is string && data.challengedSentenceUrl.matches('https://firebasestorage.googleapis.com/.*') &&
+             data.rulingSentenceUrl is string && data.rulingSentenceUrl.matches('https://firebasestorage.googleapis.com/.*');
     }
 
 
@@ -123,12 +170,11 @@ service cloud.firestore {
 
     match /courthouses/{courthouseId} {
       allow get, list: if true;
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin() && isExistingDoc();
+      allow create, update, delete: if isAdmin() && isExistingDoc();
 
       match /ratings/{ratingId} {
         allow get, list: if true;
-        allow create: if isValidNewRating(courthouseId);
+        allow create: if isApprovedLawyer() && isValidNewRating(courthouseId);
         allow update: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc() && areRatingFieldsImmutable();
         allow delete: if (isOwner(resource.data.lawyerId) || isAdmin()) && isExistingDoc();
       }
@@ -136,6 +182,12 @@ service cloud.firestore {
       match /statistics/{statisticId} {
         allow get, list: if true;
         allow create, update, delete: if false;
+      }
+      
+      match /arbitrary_sentences/{sentenceId} {
+        allow get, list: if true; // Publicly readable once approved
+        allow create: if isApprovedLawyer() && isValidNewArbitrarySentence(courthouseId);
+        allow update, delete: if isAdmin(); // Only admins can moderate/delete
       }
     }
 
