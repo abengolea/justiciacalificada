@@ -15,7 +15,6 @@ import { CourthouseListItem } from "./courthouse-list-item";
 import type { Courthouse, Rating, Lawyer } from "@/lib/types";
 import { ratingCategories } from "@/lib/types";
 import { Search, SortAsc, LayoutGrid, List } from "lucide-react";
-import { provincias } from "@/lib/data";
 import { useCollection, useDoc, useFirebase, useMemoFirebase, useUser } from "@/firebase";
 import { collection, collectionGroup, doc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +24,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 interface Fuero { id: string; nombre: string; }
+interface Provincia { id: string; nombre: string; }
 
 export default function CourthouseList() {
   const [isClient, setIsClient] = useState(false);
@@ -52,6 +52,9 @@ export default function CourthouseList() {
   const fuerosQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'fueros') : null), [firestore]);
   const { data: fueros, isLoading: isLoadingFueros } = useCollection<Fuero>(fuerosQuery);
 
+  const provinciasQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'provincias') : null), [firestore]);
+  const { data: provinciasData, isLoading: isLoadingProvincias } = useCollection<Provincia>(provinciasQuery);
+
   const { isAdmin, isLoading: isLoadingAdmin } = useAdminStatus();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -62,8 +65,8 @@ export default function CourthouseList() {
   const defaultFilterApplied = useRef(false);
   
   const dependenciasList = useMemo(
-    () => ["all", ...provincias.sort()],
-    []
+    () => ["all", ...Array.from(new Set((provinciasData || []).map((p) => p.nombre).filter(Boolean))).sort()],
+    [provinciasData]
   );
 
   useEffect(() => {
@@ -172,7 +175,7 @@ export default function CourthouseList() {
   }, [processedAndSortedCourthouses, view]);
 
 
-  const isLoading = isUserLoading || isLoadingCourthouses || isLoadingRatings || isLoadingAdmin || isLoadingFueros || profileLoading;
+  const isLoading = isUserLoading || isLoadingCourthouses || isLoadingRatings || isLoadingAdmin || isLoadingFueros || profileLoading || isLoadingProvincias;
   const showLoading = !isClient || isLoading;
 
   const isAnyFilterActive = searchTerm !== '' || dependenciaFilter !== 'all' || fueroFilter !== 'all';
