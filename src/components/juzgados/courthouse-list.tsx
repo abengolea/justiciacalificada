@@ -16,8 +16,8 @@ import type { Courthouse, Rating, Lawyer } from "@/lib/types";
 import { ratingCategories } from "@/lib/types";
 import { Search, SortAsc, LayoutGrid, List } from "lucide-react";
 import { provincias } from "@/lib/data";
-import { useCollection, useFirebase, useMemoFirebase, useUser } from "@/firebase";
-import { collection, collectionGroup, doc, getDoc } from "firebase/firestore";
+import { useCollection, useDoc, useFirebase, useMemoFirebase, useUser } from "@/firebase";
+import { collection, collectionGroup, doc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { useAdminStatus } from "@/hooks/use-admin-status";
@@ -36,8 +36,12 @@ export default function CourthouseList() {
 
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
-  const [lawyerProfile, setLawyerProfile] = useState<Lawyer | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+
+  const lawyerDocRef = useMemoFirebase(
+    () => (user ? doc(firestore, 'lawyers', user.uid) : null),
+    [user, firestore]
+  );
+  const { data: lawyerProfile, isLoading: profileLoading } = useDoc<Lawyer>(lawyerDocRef);
 
   const courthousesQuery = useMemoFirebase(() => (firestore ? collection(firestore, 'juzgados') : null), [firestore]);
   const { data: courthouses, isLoading: isLoadingCourthouses } = useCollection<Courthouse>(courthousesQuery);
@@ -63,30 +67,13 @@ export default function CourthouseList() {
   );
 
   useEffect(() => {
-    if (isUserLoading) return;
-    
-    if (!user) {
-      setProfileLoading(false);
-      return;
-    }
-
-    const lawyerDocRef = doc(firestore, 'lawyers', user.uid);
-    getDoc(lawyerDocRef).then(docSnap => {
-      if (docSnap.exists()) {
-        const profile = docSnap.data() as Lawyer;
-        setLawyerProfile(profile);
-        
-        if (profile.provincia && !defaultFilterApplied.current) {
-          if (dependenciasList.includes(profile.provincia)) {
-            setDependenciaFilter(profile.provincia);
-          }
-          defaultFilterApplied.current = true;
-        }
+    if (lawyerProfile?.provincia && !defaultFilterApplied.current) {
+      if (dependenciasList.includes(lawyerProfile.provincia)) {
+        setDependenciaFilter(lawyerProfile.provincia);
+        defaultFilterApplied.current = true;
       }
-      setProfileLoading(false);
-    }).catch(() => setProfileLoading(false));
-
-  }, [user, isUserLoading, firestore, dependenciasList]);
+    }
+  }, [lawyerProfile, dependenciasList]);
 
   const fuerosList = useMemo(
     () => ["all", ...Array.from(new Set((fueros || []).map((f) => f.nombre).filter(Boolean))).sort()],
@@ -185,7 +172,7 @@ export default function CourthouseList() {
   }, [processedAndSortedCourthouses, view]);
 
 
-  const isLoading = isLoadingCourthouses || isLoadingRatings || isLoadingAdmin || isLoadingFueros || profileLoading;
+  const isLoading = isUserLoading || isLoadingCourthouses || isLoadingRatings || isLoadingAdmin || isLoadingFueros || profileLoading;
   const showLoading = !isClient || isLoading;
 
   const isAnyFilterActive = searchTerm !== '' || dependenciaFilter !== 'all' || fueroFilter !== 'all';
