@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -81,9 +80,12 @@ export default function AdminDashboard() {
           <CardTitle>Accesos Rápidos</CardTitle>
           <CardDescription>Atajos a las secciones de administración principales.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Button asChild variant="outline">
-            <Link href="/admin/juzgados">Gestionar Juzgados</Link>
+            <Link href="/admin/juzgados">Carga Masiva de Datos</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/correccion">Corregir y Editar Juzgados</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/admin/usuarios">Gestionar Usuarios</Link>
