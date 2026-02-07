@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Home,
-  Gavel,
   Users,
   MessageSquare,
   PanelLeft,
   Loader2,
-  Wand2,
+  Upload,
+  Pencil,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -119,18 +119,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton href="/admin/juzgados" asChild>
-                  <Link href="/admin/juzgados">
-                    <Gavel />
-                    Juzgados
+                <SidebarMenuButton href="/admin/correccion" asChild>
+                  <Link href="/admin/correccion">
+                    <Pencil />
+                    Editar Juzgados
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-               <SidebarMenuItem>
-                <SidebarMenuButton href="/admin/correccion" asChild>
-                  <Link href="/admin/correccion">
-                    <Wand2 />
-                    Corrección de Datos
+              <SidebarMenuItem>
+                <SidebarMenuButton href="/admin/juzgados" asChild>
+                  <Link href="/admin/juzgados">
+                    <Upload />
+                    Carga Masiva
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
