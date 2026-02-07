@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition, useMemo } from 'react';
@@ -12,7 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Wand2, Loader2, Save, X, Pencil, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAiAnalysis } from '@/app/actions';
-import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 type Correction = {
     courthouseId: string;
@@ -32,6 +33,7 @@ export default function DataCorrectionPage() {
     const [editingRows, setEditingRows] = useState<Record<string, Partial<Courthouse>>>({});
     const [analysis, setAnalysis] = useState<Correction[] | null>(null);
     const [isAnalyzing, startAnalysisTransition] = useTransition();
+    const [showOnlyWithSuggestions, setShowOnlyWithSuggestions] = useState(false);
 
     const analysisMap = useMemo(() => {
         if (!analysis) return new Map();
@@ -42,6 +44,14 @@ export default function DataCorrectionPage() {
         });
         return map;
     }, [analysis]);
+    
+    const filteredJuzgados = useMemo(() => {
+        if (!juzgados) return [];
+        if (!showOnlyWithSuggestions || !analysis || analysis.length === 0) {
+            return juzgados;
+        }
+        return juzgados.filter(juzgado => analysisMap.has(juzgado.id));
+    }, [juzgados, showOnlyWithSuggestions, analysis, analysisMap]);
 
     const handleAnalyze = () => {
         if (!juzgados || juzgados.length === 0) {
@@ -57,6 +67,7 @@ export default function DataCorrectionPage() {
                 toast({ title: "Análisis completado", description: `Se encontraron ${result.corrections.length} posibles problemas.` });
             } else {
                 toast({ title: "Análisis completado", description: "No se encontraron problemas evidentes." });
+                setShowOnlyWithSuggestions(false);
             }
         });
     };
@@ -110,7 +121,13 @@ export default function DataCorrectionPage() {
         toast({ title: "Sugerencia aplicada", description: `Se actualizó el campo '${fieldName}'.` });
 
         // Remove the suggestion from the list so it disappears
-        setAnalysis(prev => prev?.filter(c => !(c.courthouseId === courthouseId && c.fieldName === fieldName)) || null);
+        setAnalysis(prev => {
+            const newAnalysis = prev?.filter(c => !(c.courthouseId === courthouseId && c.fieldName === fieldName)) || null;
+            if (newAnalysis?.length === 0) {
+                setShowOnlyWithSuggestions(false);
+            }
+            return newAnalysis;
+        });
     }
 
     return (
@@ -123,14 +140,30 @@ export default function DataCorrectionPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Button onClick={handleAnalyze} disabled={isAnalyzing || isLoadingJuzgados}>
-                        {isAnalyzing ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Wand2 className="mr-2 h-4 w-4" />
-                        )}
-                        Analizar con IA
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-6">
+                        <Button onClick={handleAnalyze} disabled={isAnalyzing || isLoadingJuzgados}>
+                            {isAnalyzing ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Wand2 className="mr-2 h-4 w-4" />
+                            )}
+                            Analizar con IA
+                        </Button>
+                        <div className="flex items-center space-x-2">
+                            <Switch
+                                id="filter-suggestions"
+                                checked={showOnlyWithSuggestions}
+                                onCheckedChange={setShowOnlyWithSuggestions}
+                                disabled={!analysis || analysis.length === 0}
+                            />
+                            <Label 
+                                htmlFor="filter-suggestions" 
+                                className={cn((!analysis || analysis.length === 0) && "text-muted-foreground/50 cursor-not-allowed")}
+                            >
+                                Mostrar solo con observaciones
+                            </Label>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -161,7 +194,7 @@ export default function DataCorrectionPage() {
                                         </TableRow>
                                     ))
                                 ) : (
-                                    juzgados?.map(juzgado => {
+                                    filteredJuzgados?.map(juzgado => {
                                         const isEditing = !!editingRows[juzgado.id];
                                         const editedJuzgado = editingRows[juzgado.id] || juzgado;
                                         const suggestions = analysisMap.get(juzgado.id);
@@ -234,9 +267,11 @@ export default function DataCorrectionPage() {
                                         );
                                     })
                                 )}
-                                {!isLoadingJuzgados && juzgados?.length === 0 && (
+                                {!isLoadingJuzgados && filteredJuzgados?.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">No se encontraron juzgados.</TableCell>
+                                        <TableCell colSpan={6} className="h-24 text-center">
+                                            {showOnlyWithSuggestions ? "No hay juzgados con observaciones." : "No se encontraron juzgados."}
+                                        </TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -264,3 +299,5 @@ function SuggestionCard({ suggestion, onApply }: { suggestion: Correction; onApp
         </div>
     )
 }
+
+    
