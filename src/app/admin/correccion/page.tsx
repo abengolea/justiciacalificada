@@ -207,8 +207,8 @@ export default function DataCorrectionPage() {
                                                     ) : (
                                                         <span>{juzgado.nombre}</span>
                                                     )}
-                                                    {suggestions?.filter(s => s.fieldName === 'nombre').map(s => (
-                                                        <SuggestionCard key={`${s.courthouseId}-${s.fieldName}`} suggestion={s} onApply={applySuggestion} />
+                                                    {suggestions?.filter(s => s.fieldName === 'nombre').map((s, i) => (
+                                                        <SuggestionCard key={`${s.courthouseId}-${s.fieldName}-${i}`} suggestion={s} onApply={applySuggestion} />
                                                     ))}
                                                 </TableCell>
                                                 <TableCell>
@@ -217,8 +217,8 @@ export default function DataCorrectionPage() {
                                                     ) : (
                                                         <span>{juzgado.ciudad}</span>
                                                     )}
-                                                     {suggestions?.filter(s => s.fieldName === 'ciudad').map(s => (
-                                                        <SuggestionCard key={`${s.courthouseId}-${s.fieldName}`} suggestion={s} onApply={applySuggestion} />
+                                                     {suggestions?.filter(s => s.fieldName === 'ciudad').map((s, i) => (
+                                                        <SuggestionCard key={`${s.courthouseId}-${s.fieldName}-${i}`} suggestion={s} onApply={applySuggestion} />
                                                     ))}
                                                 </TableCell>
                                                 <TableCell>
@@ -227,8 +227,8 @@ export default function DataCorrectionPage() {
                                                     ) : (
                                                         <span>{juzgado.dependencia}</span>
                                                     )}
-                                                     {suggestions?.filter(s => s.fieldName === 'dependencia').map(s => (
-                                                        <SuggestionCard key={`${s.courthouseId}-${s.fieldName}`} suggestion={s} onApply={applySuggestion} />
+                                                     {suggestions?.filter(s => s.fieldName === 'dependencia').map((s, i) => (
+                                                        <SuggestionCard key={`${s.courthouseId}-${s.fieldName}-${i}`} suggestion={s} onApply={applySuggestion} />
                                                     ))}
                                                 </TableCell>
                                                 <TableCell>
@@ -237,8 +237,8 @@ export default function DataCorrectionPage() {
                                                     ) : (
                                                         <span>{juzgado.fuero}</span>
                                                     )}
-                                                     {suggestions?.filter(s => s.fieldName === 'fuero').map(s => (
-                                                        <SuggestionCard key={`${s.courthouseId}-${s.fieldName}`} suggestion={s} onApply={applySuggestion} />
+                                                     {suggestions?.filter(s => s.fieldName === 'fuero').map((s, i) => (
+                                                        <SuggestionCard key={`${s.courthouseId}-${s.fieldName}-${i}`} suggestion={s} onApply={applySuggestion} />
                                                     ))}
                                                 </TableCell>
                                                 <TableCell>
@@ -247,8 +247,8 @@ export default function DataCorrectionPage() {
                                                     ) : (
                                                         <span>{juzgado.instancia}</span>
                                                     )}
-                                                    {suggestions?.filter(s => s.fieldName === 'instancia').map(s => (
-                                                        <SuggestionCard key={`${s.courthouseId}-${s.fieldName}`} suggestion={s} onApply={applySuggestion} />
+                                                    {suggestions?.filter(s => s.fieldName === 'instancia').map((s, i) => (
+                                                        <SuggestionCard key={`${s.courthouseId}-${s.fieldName}-${i}`} suggestion={s} onApply={applySuggestion} />
                                                     ))}
                                                 </TableCell>
                                                 <TableCell className="text-right">
