@@ -91,8 +91,10 @@ export default function NewCourthousePage() {
     }, [provincias]);
 
     const fuerosList = useMemo(() => {
-        if (!fueros) return [];
-        return [...new Set(fueros.map(f => f.nombre).filter(Boolean))].sort();
+        if (!fueros) return ['Multifuero'];
+        const existingFueros = fueros.map(f => f.nombre).filter(Boolean);
+        const allFueros = new Set([...existingFueros, 'Multifuero']);
+        return [...allFueros].sort();
     }, [fueros]);
 
     const instancias = useMemo(() => {
