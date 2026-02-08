@@ -167,7 +167,7 @@ export default function NewCourthousePage() {
                                     render={({ field }) => (
                                         <FormItem>
                                         <FormLabel>Dependencia (Provincia)</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting || isLoadingData}>
+                                        <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingData}>
                                             <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Seleccionar dependencia" />
@@ -187,7 +187,7 @@ export default function NewCourthousePage() {
                                     render={({ field }) => (
                                         <FormItem>
                                         <FormLabel>Ciudad</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting || isLoadingData}>
+                                        <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingData}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Seleccionar ciudad" />
@@ -210,7 +210,7 @@ export default function NewCourthousePage() {
                                     render={({ field }) => (
                                         <FormItem>
                                         <FormLabel>Fuero</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting || isLoadingData}>
+                                        <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingData}>
                                             <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Seleccionar fuero" />
@@ -230,7 +230,7 @@ export default function NewCourthousePage() {
                                     render={({ field }) => (
                                         <FormItem>
                                         <FormLabel>Instancia</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting || isLoadingData}>
+                                        <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingData}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Seleccionar instancia" />
