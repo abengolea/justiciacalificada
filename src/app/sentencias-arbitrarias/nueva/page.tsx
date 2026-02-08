@@ -104,7 +104,7 @@ export default function NewArbitrarySentencePage() {
             const challengedFile = values.challengedSentence[0] as File;
             const rulingFile = values.rulingSentence[0] as File;
             
-            const arbitrarySentencesRef = collection(firestore, 'courthouses', values.courthouseId, 'arbitrary_sentences');
+            const arbitrarySentencesRef = collection(firestore, 'juzgados', values.courthouseId, 'arbitrary_sentences');
             const newDocRef = doc(arbitrarySentencesRef);
             const sentenceId = newDocRef.id;
 

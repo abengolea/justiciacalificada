@@ -9,6 +9,7 @@
  * - /juzgados/{juzgadoId}: Publicly available information about courthouses.
  * - /juzgados/{juzgadoId}/ratings/{ratingId}: User-submitted ratings, which are publicly readable.
  * - /juzgados/{juzgadoId}/statistics/{statisticId}: Publicly readable, aggregated statistics, not writable by clients.
+ * - /juzgados/{juzgadoId}/arbitrary_sentences/{sentenceId}: User-submitted sentences declared arbitrary by a higher court.
  *
  * Key Security Decisions:
  * - Strict Ownership: A lawyer's profile in `/lawyers` is strictly private and can only be accessed or modified by the owner, unless the user is an admin.
@@ -139,6 +140,19 @@ service cloud.firestore {
       return request.resource.data.lawyerId == resource.data.lawyerId &&
              request.resource.data.courthouseId == resource.data.courthouseId;
     }
+    
+    function isValidNewArbitrarySentence(juzgadoId) {
+      let data = request.resource.data;
+      return isOwner(data.lawyerId) &&
+             data.courthouseId == juzgadoId &&
+             data.status == 'pending' &&
+             data.submissionDate == request.time &&
+             data.caseDetails.caseName is string &&
+             data.caseDetails.caseNumber is string &&
+             data.caseDetails.caseYear is number &&
+             data.challengedSentenceUrl is string && data.challengedSentenceUrl.matches('https://firebasestorage.googleapis.com/.*') &&
+             data.rulingSentenceUrl is string && data.rulingSentenceUrl.matches('https://firebasestorage.googleapis.com/.*');
+    }
 
 
     // ----------------------------------------------------------------
@@ -180,6 +194,12 @@ service cloud.firestore {
         allow get, list: if true;
         allow create, update, delete: if false;
       }
+      
+      match /arbitrary_sentences/{sentenceId} {
+        allow get, list: if true;
+        allow create: if isApprovedLawyer() && isValidNewArbitrarySentence(juzgadoId);
+        allow update, delete: if isAdmin();
+      }
     }
     
     // Join table for fueros and juzgados
@@ -204,6 +224,11 @@ service cloud.firestore {
     // This rule allows the collection group query for 'ratings' to work.
     // It's needed for the main courthouse list page to calculate average ratings.
     match /{path=**}/ratings/{ratingId} {
+      allow get, list: if true;
+    }
+    
+    // Collection group query for arbitrary sentences.
+    match /{path=**}/arbitrary_sentences/{sentenceId} {
       allow get, list: if true;
     }
 

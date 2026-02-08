@@ -62,8 +62,8 @@ export default function AdminArbitrarySentencesPage() {
   }, [sentences]);
 
   const handleUpdateStatus = (sentence: ArbitrarySentence, status: 'approved' | 'rejected') => {
-    // Document path is /courthouses/{courthouseId}/arbitrary_sentences/{sentenceId}
-    const sentenceDocRef = doc(firestore, 'courthouses', sentence.courthouseId, 'arbitrary_sentences', sentence.id);
+    // Document path is /juzgados/{courthouseId}/arbitrary_sentences/{sentenceId}
+    const sentenceDocRef = doc(firestore, 'juzgados', sentence.courthouseId, 'arbitrary_sentences', sentence.id);
     updateDocumentNonBlocking(sentenceDocRef, { status });
 
     toast({
@@ -79,7 +79,7 @@ export default function AdminArbitrarySentencesPage() {
 
   const handleDelete = () => {
     if (!sentenceToDelete) return;
-    const sentenceDocRef = doc(firestore, 'courthouses', sentenceToDelete.courthouseId, 'arbitrary_sentences', sentenceToDelete.id);
+    const sentenceDocRef = doc(firestore, 'juzgados', sentenceToDelete.courthouseId, 'arbitrary_sentences', sentenceToDelete.id);
     deleteDocumentNonBlocking(sentenceDocRef);
 
     toast({
