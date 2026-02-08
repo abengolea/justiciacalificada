@@ -33,7 +33,7 @@ import {
     useMemoFirebase,
     useDoc
 } from '@/firebase';
-import { collection, doc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, ChevronsUpDown, Check, FileUp } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -123,6 +123,9 @@ export default function NewArbitrarySentencePage() {
             const challengedFile = values.challengedSentence[0] as File;
             const rulingFile = values.rulingSentence[0] as File;
             
+            const isUserAdmin = lawyer?.role === 'admin';
+            const status = isUserAdmin ? 'approved' : 'pending';
+
             const arbitrarySentencesRef = collection(firestore, 'juzgados', values.courthouseId, 'arbitrary_sentences');
             const newDocRef = doc(arbitrarySentencesRef);
             const sentenceId = newDocRef.id;
@@ -153,17 +156,26 @@ export default function NewArbitrarySentencePage() {
                 challengedSentenceUrl,
                 rulingSentenceUrl,
                 submissionDate: serverTimestamp(),
-                status: 'pending',
+                status: status,
             };
             
-            await addDoc(arbitrarySentencesRef, submissionData);
+            await setDoc(newDocRef, submissionData);
+
+            const toastTitle = isUserAdmin ? "Sentencia Publicada" : "Carga Exitosa";
+            const toastDescription = isUserAdmin
+                ? "El caso se ha publicado directamente y ya es visible."
+                : "Su caso de sentencia arbitraria ha sido enviado para revisión.";
 
             toast({
-                title: "Carga Exitosa",
-                description: "Su caso de sentencia arbitraria ha sido enviado para revisión.",
+                title: toastTitle,
+                description: toastDescription,
             });
 
-            router.push('/'); // Redirect to home or a confirmation page
+            if (isUserAdmin) {
+                router.push('/admin/sentencias-arbitrarias');
+            } else {
+                router.push('/');
+            }
 
         } catch (error) {
             console.error("Error submitting arbitrary sentence:", error);
@@ -216,6 +228,8 @@ export default function NewArbitrarySentencePage() {
             </div>
         )
     }
+    
+    const isUserAdmin = lawyer?.role === 'admin';
 
     return (
         <div className="container mx-auto max-w-3xl py-12">
@@ -223,7 +237,10 @@ export default function NewArbitrarySentencePage() {
                 <CardHeader>
                     <CardTitle className="text-3xl font-headline text-primary">Cargar Sentencia Arbitraria</CardTitle>
                     <CardDescription>
-                        Aporte un caso donde un tribunal superior haya declarado arbitraria una sentencia de un tribunal inferior. Su envío será revisado por un administrador antes de ser publicado.
+                        {isUserAdmin
+                            ? "Como administrador, el caso se publicará directamente sin necesidad de revisión."
+                            : "Aporte un caso donde un tribunal superior haya declarado arbitraria una sentencia de un tribunal inferior. Su envío será revisado por un administrador antes de ser publicado."
+                        }
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -413,7 +430,7 @@ export default function NewArbitrarySentencePage() {
                                 ) : (
                                     <>
                                         <FileUp className="mr-2 h-4 w-4" />
-                                        Enviar Caso para Revisión
+                                        {isUserAdmin ? "Publicar Caso Directamente" : "Enviar Caso para Revisión"}
                                     </>
                                 )}
                             </Button>
