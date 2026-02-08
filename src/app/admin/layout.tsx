@@ -13,6 +13,7 @@ import {
   Pencil,
   Scale,
   Menu,
+  Mail,
 } from 'lucide-react';
 import { AppLogo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,10 @@ const AdminNavContent = ({ onLinkClick }: { onLinkClick?: () => void }) => (
         <NavLink href="/admin/sentencias-arbitrarias" onClick={onLinkClick}>
             <Scale className="h-4 w-4" />
             Sentencias
+        </NavLink>
+        <NavLink href="/admin/email-test" onClick={onLinkClick}>
+            <Mail className="h-4 w-4" />
+            Test de Correo
         </NavLink>
     </>
 );
@@ -193,5 +198,3 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     </div>
   );
 }
-
-    
