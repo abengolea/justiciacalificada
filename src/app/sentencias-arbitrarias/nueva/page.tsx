@@ -38,6 +38,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, ChevronsUpDown, Check, FileUp } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Courthouse, Lawyer } from '@/lib/types';
 
@@ -46,6 +47,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_FILE_TYPES = ["application/pdf"];
 
 const formSchema = z.object({
+  dependencia: z.string().min(1, "Debe seleccionar una dependencia para filtrar los juzgados."),
   courthouseId: z.string().min(1, "Debe seleccionar un juzgado."),
   caseName: z.string().min(3, "La carátula del caso es requerida."),
   caseNumber: z.string().min(1, "El número de caso es requerido."),
@@ -83,10 +85,27 @@ export default function NewArbitrarySentencePage() {
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
+            dependencia: '',
+            courthouseId: '',
             caseName: '',
             caseNumber: '',
         },
     });
+    
+    const dependencias = useMemo(() => {
+        if (!courthouses) return [];
+        return [...new Set(courthouses.map(c => c.dependencia).filter(Boolean))].sort();
+    }, [courthouses]);
+
+    const selectedDependencia = form.watch('dependencia');
+
+    const filteredCourthouses = useMemo(() => {
+        if (!courthouses || !selectedDependencia) return [];
+        return courthouses
+            .filter(c => c.dependencia === selectedDependencia)
+            .sort((a,b) => a.nombre.localeCompare(b.nombre));
+    }, [courthouses, selectedDependencia]);
+
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
         if (!user || lawyer?.status !== 'approved') {
@@ -212,23 +231,54 @@ export default function NewArbitrarySentencePage() {
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                              <FormField
                                 control={form.control}
+                                name="dependencia"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>1. Seleccione la Dependencia</FormLabel>
+                                    <Select
+                                        onValueChange={(value) => {
+                                            field.onChange(value);
+                                            form.resetField('courthouseId');
+                                        }}
+                                        defaultValue={field.value}
+                                        disabled={isSubmitting}
+                                    >
+                                        <FormControl>
+                                        <SelectTrigger disabled={isLoadingCourthouses}>
+                                            <SelectValue placeholder="Seleccione una provincia o jurisdicción" />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                        {dependencias.map((d) => (
+                                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                                        ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
+
+                             <FormField
+                                control={form.control}
                                 name="courthouseId"
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
-                                    <FormLabel>Tribunal que dictó la sentencia original</FormLabel>
+                                    <FormLabel>2. Seleccione el Tribunal</FormLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
                                             variant="outline"
                                             role="combobox"
+                                            disabled={!selectedDependencia || filteredCourthouses.length === 0 || isSubmitting}
                                             className={cn(
                                                 "w-full justify-between",
                                                 !field.value && "text-muted-foreground"
                                             )}
                                             >
                                             {field.value
-                                                ? courthouses?.find(
+                                                ? filteredCourthouses?.find(
                                                     (c) => c.id === field.value
                                                 )?.nombre
                                                 : "Seleccionar juzgado"}
@@ -241,7 +291,7 @@ export default function NewArbitrarySentencePage() {
                                             <CommandInput placeholder="Buscar juzgado..." />
                                             <CommandEmpty>No se encontró ningún juzgado.</CommandEmpty>
                                             <CommandGroup className="overflow-y-auto">
-                                            {courthouses?.sort((a, b) => a.nombre.localeCompare(b.nombre)).map((c) => (
+                                            {filteredCourthouses?.map((c) => (
                                                 <CommandItem
                                                 value={c.nombre}
                                                 key={c.id}
@@ -317,7 +367,7 @@ export default function NewArbitrarySentencePage() {
                                 name="challengedSentence"
                                 render={({ field: { onChange, value, ...rest }}) => (
                                 <FormItem>
-                                    <FormLabel>1. Sentencia Impugnada (PDF)</FormLabel>
+                                    <FormLabel>3. Sentencia Impugnada (PDF)</FormLabel>
                                     <FormDescription>Suba el archivo de la sentencia original que fue declarada arbitraria.</FormDescription>
                                     <FormControl>
                                     <Input 
@@ -338,7 +388,7 @@ export default function NewArbitrarySentencePage() {
                                 name="rulingSentence"
                                 render={({ field: { onChange, value, ...rest }}) => (
                                 <FormItem>
-                                    <FormLabel>2. Sentencia Revocatoria (PDF)</FormLabel>
+                                    <FormLabel>4. Sentencia Revocatoria (PDF)</FormLabel>
                                     <FormDescription>Suba el archivo de la sentencia del tribunal superior que revoca la original por arbitrariedad.</FormDescription>
                                     <FormControl>
                                     <Input 
