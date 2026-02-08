@@ -72,3 +72,18 @@ export interface Lawyer {
   status: 'pending' | 'approved' | 'rejected';
   registrationDate: any; // Can be a server timestamp
 }
+
+export interface ArbitrarySentence {
+  id: string;
+  lawyerId: string;
+  courthouseId: string;
+  caseDetails: {
+      caseName: string;
+      caseNumber: string;
+      caseYear: number;
+  };
+  challengedSentenceUrl: string;
+  rulingSentenceUrl: string;
+  submissionDate: any; // Timestamp
+  status: 'pending' | 'approved' | 'rejected';
+}

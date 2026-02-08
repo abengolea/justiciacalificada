@@ -11,6 +11,7 @@ import {
   Loader2,
   Upload,
   Pencil,
+  Scale,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -147,6 +148,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <Link href="/admin/comentarios">
                     <MessageSquare />
                     Comentarios
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton href="/admin/sentencias-arbitrarias" asChild>
+                  <Link href="/admin/sentencias-arbitrarias">
+                    <Scale />
+                    Sentencias
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

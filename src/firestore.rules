@@ -185,7 +185,7 @@ service cloud.firestore {
       }
       
       match /arbitrary_sentences/{sentenceId} {
-        allow get, list: if true; // Publicly readable once approved
+        allow get, list: if true; // Publicly readable
         allow create: if isApprovedLawyer() && isValidNewArbitrarySentence(courthouseId);
         allow update, delete: if isAdmin(); // Only admins can moderate/delete
       }
@@ -194,6 +194,11 @@ service cloud.firestore {
     // This rule allows the collection group query for 'ratings' to work.
     // It's needed for the main courthouse list page to calculate average ratings.
     match /{path=**}/ratings/{ratingId} {
+      allow get, list: if true;
+    }
+    
+    // Collection group query for arbitrary sentences.
+    match /{path=**}/arbitrary_sentences/{sentenceId} {
       allow get, list: if true;
     }
 
