@@ -40,11 +40,12 @@ import {
 } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
+import { Courthouse } from '@/lib/types';
 
 const formSchema = z.object({
   nombre: z.string().min(3, { message: 'El nombre es requerido (mínimo 3 caracteres).' }),
   dependencia: z.string().min(1, { message: 'La dependencia es requerida.' }),
-  ciudad: z.string().min(2, { message: 'La ciudad es requerida.' }),
+  ciudad: z.string().min(1, { message: 'La ciudad es requerida.' }),
   fuero: z.string().min(1, { message: 'El fuero es requerido.' }),
   instancia: z.string().min(1, { message: 'La instancia es requerida.' }),
   direccion: z.string().optional(),
@@ -81,6 +82,10 @@ export default function NewCourthousePage() {
     const fuerosQuery = useMemoFirebase(() => collection(firestore, 'fueros'), [firestore]);
     const { data: fueros, isLoading: isLoadingFueros } = useCollection<Fuero>(fuerosQuery);
 
+    const juzgadosQuery = useMemoFirebase(() => collection(firestore, 'juzgados'), [firestore]);
+    const { data: juzgados, isLoading: isLoadingJuzgados } = useCollection<Courthouse>(juzgadosQuery);
+
+
     const dependencias = useMemo(() => {
         if (!provincias) return [];
         return [...new Set(provincias.map(p => p.nombre).filter(Boolean))].sort();
@@ -93,7 +98,17 @@ export default function NewCourthousePage() {
         return [...allFueros].sort();
     }, [fueros]);
 
-    const isLoadingData = isLoadingProvincias || isLoadingFueros;
+    const ciudadesList = useMemo(() => {
+        if (!juzgados) return [];
+        return [...new Set(juzgados.map(j => j.ciudad).filter(Boolean))].sort();
+    }, [juzgados]);
+    
+    const instanciasList = useMemo(() => {
+        if (!juzgados) return [];
+        return [...new Set(juzgados.map(j => j.instancia).filter(Boolean))].sort();
+    }, [juzgados]);
+
+    const isLoadingData = isLoadingProvincias || isLoadingFueros || isLoadingJuzgados;
 
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -172,9 +187,16 @@ export default function NewCourthousePage() {
                                     render={({ field }) => (
                                         <FormItem>
                                         <FormLabel>Ciudad</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Ej: La Plata" {...field} disabled={isSubmitting} />
-                                        </FormControl>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting || isLoadingData}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Seleccionar ciudad" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {ciudadesList.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                         </FormItem>
                                     )}
@@ -208,9 +230,16 @@ export default function NewCourthousePage() {
                                     render={({ field }) => (
                                         <FormItem>
                                         <FormLabel>Instancia</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Ej: Cámara de Apelaciones" {...field} disabled={isSubmitting} />
-                                        </FormControl>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting || isLoadingData}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Seleccionar instancia" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {instanciasList.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                         </FormItem>
                                     )}
