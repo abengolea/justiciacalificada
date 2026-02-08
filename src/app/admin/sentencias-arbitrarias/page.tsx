@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -10,7 +11,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, Trash2, X, ExternalLink, FileText } from 'lucide-react';
+import { Check, Trash2, X, ExternalLink, FileText, PlusCircle } from 'lucide-react';
 import { ArbitrarySentence, Courthouse, Lawyer } from '@/lib/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -187,6 +188,12 @@ export default function AdminArbitrarySentencesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Moderar Sentencias Arbitrarias</h2>
+        <Button asChild>
+            <Link href="/sentencias-arbitrarias/nueva">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Cargar Sentencia
+            </Link>
+        </Button>
       </div>
       <Tabs defaultValue="pending">
         <TabsList className="mb-4">
