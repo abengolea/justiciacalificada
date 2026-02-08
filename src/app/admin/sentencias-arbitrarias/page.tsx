@@ -56,14 +56,18 @@ export default function AdminArbitrarySentencesPage() {
 
   const sortedSentences = useMemo(() => {
     if (!sentences) return { pending: [], approved: [], rejected: [] };
-    return sentences.reduce((acc, sentence) => {
+    const allSentences = [...sentences].sort((a,b) => {
+        const dateA = a.submissionDate?.toDate ? a.submissionDate.toDate() : new Date(0);
+        const dateB = b.submissionDate?.toDate ? b.submissionDate.toDate() : new Date(0);
+        return dateB.getTime() - dateA.getTime();
+    });
+    return allSentences.reduce((acc, sentence) => {
         acc[sentence.status].push(sentence);
         return acc;
     }, { pending: [] as ArbitrarySentence[], approved: [] as ArbitrarySentence[], rejected: [] as ArbitrarySentence[] });
   }, [sentences]);
 
   const handleUpdateStatus = (sentence: ArbitrarySentence, status: 'approved' | 'rejected') => {
-    // Document path is /juzgados/{courthouseId}/arbitrary_sentences/{sentenceId}
     const sentenceDocRef = doc(firestore, 'juzgados', sentence.courthouseId, 'arbitrary_sentences', sentence.id);
     updateDocumentNonBlocking(sentenceDocRef, { status });
 
@@ -137,7 +141,15 @@ export default function AdminArbitrarySentencesPage() {
             Expediente: {sentence.caseDetails.caseNumber} | Año: {sentence.caseDetails.caseYear}
           </p>
         </div>
-        <div className="flex gap-4">
+        {sentence.summary && (
+             <div>
+                <h4 className="font-semibold">Resumen IA</h4>
+                <p className="text-sm text-muted-foreground border-l-2 border-primary pl-3 italic">
+                    {sentence.summary}
+                </p>
+            </div>
+        )}
+        <div className="flex flex-wrap gap-4">
           <Button asChild variant="outline" size="sm">
             <a href={sentence.challengedSentenceUrl} target="_blank" rel="noopener noreferrer">
               <FileText className="mr-2 h-4 w-4" /> Sentencia Impugnada <ExternalLink className="ml-2 h-3 w-3" />
@@ -221,10 +233,12 @@ export default function AdminArbitrarySentencesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setSentenceToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
 }
+
+    

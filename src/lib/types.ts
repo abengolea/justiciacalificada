@@ -84,6 +84,9 @@ export interface ArbitrarySentence {
   };
   challengedSentenceUrl: string;
   rulingSentenceUrl: string;
+  summary?: string;
   submissionDate: any; // Timestamp
   status: 'pending' | 'approved' | 'rejected';
 }
+
+    

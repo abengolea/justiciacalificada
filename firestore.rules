@@ -145,13 +145,15 @@ service cloud.firestore {
       let data = request.resource.data;
       return isOwner(data.lawyerId) &&
              data.courthouseId == juzgadoId &&
-             data.status == 'pending' &&
+             // Status can be 'pending' for users or 'approved' for admins
+             (data.status == 'pending' || (data.status == 'approved' && isAdmin())) &&
              data.submissionDate == request.time &&
              data.caseDetails.caseName is string &&
              data.caseDetails.caseNumber is string &&
              data.caseDetails.caseYear is number &&
              data.challengedSentenceUrl is string && data.challengedSentenceUrl.matches('https://firebasestorage.googleapis.com/.*') &&
-             data.rulingSentenceUrl is string && data.rulingSentenceUrl.matches('https://firebasestorage.googleapis.com/.*');
+             data.rulingSentenceUrl is string && data.rulingSentenceUrl.matches('https://firebasestorage.googleapis.com/.*') &&
+             (!('summary' in data) || data.summary is string);
     }
 
 
@@ -238,3 +240,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

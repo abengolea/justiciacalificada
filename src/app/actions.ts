@@ -2,6 +2,7 @@
 
 import { summarizeCourtInsights } from "@/ai/flows/summarize-court-insights";
 import { analyzeCourthouses } from "@/ai/flows/analyze-courthouses";
+import { analyzeSentences } from "@/ai/flows/analyze-sentence-flow";
 import type { Courthouse } from "@/lib/types";
 import { provincias } from "@/lib/data";
 
@@ -25,3 +26,15 @@ export async function getAiAnalysis(courthouses: Courthouse[]) {
     return { corrections: [] };
   }
 }
+
+export async function getAiSentenceAnalysis(challengedSentencePdf: string, rulingSentencePdf: string) {
+    try {
+        const result = await analyzeSentences({ challengedSentencePdf, rulingSentencePdf });
+        return { analysis: result, error: null };
+    } catch (error) {
+        console.error("Error generating AI sentence analysis:", error);
+        return { analysis: null, error: "La IA no pudo procesar los documentos. Verifique que los archivos sean PDFs legibles y vuelva a intentarlo." };
+    }
+}
+
+    
