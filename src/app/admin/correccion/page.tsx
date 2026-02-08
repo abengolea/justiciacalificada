@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, useMemo } from 'react';
+import Link from 'next/link';
 import { useCollection, useFirebase, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { Courthouse } from '@/lib/types';
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Wand2, Loader2, Save, X, Pencil, AlertTriangle } from 'lucide-react';
+import { Wand2, Loader2, Save, X, Pencil, AlertTriangle, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAiAnalysis } from '@/app/actions';
 import { Switch } from '@/components/ui/switch';
@@ -132,11 +133,20 @@ export default function DataCorrectionPage() {
 
     return (
         <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold">Editar Juzgados</h1>
+                <Button asChild>
+                    <Link href="/admin/juzgados/nuevo">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Crear Juzgado
+                    </Link>
+                </Button>
+            </div>
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-2xl font-bold">Herramienta de Corrección de Datos</CardTitle>
+                    <CardTitle className="text-xl">Asistente de IA para Corrección</CardTitle>
                     <CardDescription>
-                        Utilice esta herramienta para editar manualmente los datos de los juzgados o use la asistencia de IA para detectar y corregir inconsistencias.
+                        Utilice la asistencia de IA para detectar y corregir inconsistencias en los datos de los juzgados.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -169,7 +179,7 @@ export default function DataCorrectionPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Juzgados</CardTitle>
+                    <CardTitle>Lista de Juzgados</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="border rounded-lg overflow-x-auto">
@@ -299,5 +309,3 @@ function SuggestionCard({ suggestion, onApply }: { suggestion: Correction; onApp
         </div>
     )
 }
-
-    
