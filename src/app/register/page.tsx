@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -154,6 +153,64 @@ export default function RegisterPage() {
     return ciudades.filter(c => departmentIds.has(c.id_departamento)).sort((a, b) => a.nombre.localeCompare(b.nombre));
   }, [selectedProvincia, provincias, departamentos, ciudades]);
 
+  const sendRegistrationEmails = (email: string, nombre: string, apellido: string, matricula: string, ciudad: string, provincia: string, provider: 'Email' | 'Google') => {
+      const mailCollectionRef = collection(firestore, "mail");
+      const adminLink = "https://qualified-justice.web.app/admin/usuarios";
+
+      const adminMailData = {
+        to: ['abengolea1@gmail.com'],
+        message: {
+            subject: `Nuevo Registro Pendiente: ${nombre} ${apellido}`,
+            html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+              <div style="background-color: #2a3b4f; color: #ffffff; padding: 20px; text-align: center;">
+                <h1 style="margin: 0; font-size: 24px;">Justicia Calificada</h1>
+              </div>
+              <div style="padding: 20px; line-height: 1.6; color: #333;">
+                <h2 style="color: #1a2c41;">Nuevo Registro Pendiente</h2>
+                <p>Un nuevo abogado se ha registrado y está esperando aprobación.</p>
+                <ul style="list-style-type: none; padding: 0;">
+                    <li style="padding: 5px 0;"><strong>Nombre:</strong> ${nombre} ${apellido}</li>
+                    <li style="padding: 5px 0;"><strong>Email:</strong> ${email}</li>
+                    <li style="padding: 5px 0;"><strong>Matrícula:</strong> ${matricula}</li>
+                    <li style="padding: 5px 0;"><strong>Ubicación:</strong> ${ciudad}, ${provincia}</li>
+                    <li style="padding: 5px 0;"><strong>Método de registro:</strong> ${provider}</li>
+                </ul>
+                <a href="${adminLink}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px;">Revisar Solicitud</a>
+              </div>
+              <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d;">
+                <p>Este es un correo electrónico automatizado.</p>
+              </div>
+            </div>
+            `,
+        },
+      };
+      addDocumentNonBlocking(mailCollectionRef, adminMailData);
+      
+      const userMailData = {
+        to: [email],
+        message: {
+          subject: 'Hemos recibido su solicitud de registro en Justicia Calificada',
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+              <div style="background-color: #2a3b4f; color: #ffffff; padding: 20px; text-align: center;">
+                <h1 style="margin: 0; font-size: 24px;">Justicia Calificada</h1>
+              </div>
+              <div style="padding: 20px; line-height: 1.6; color: #333;">
+                <h2 style="color: #1a2c41;">¡Gracias por registrarse!</h2>
+                <p>Hola ${nombre},</p>
+                <p>Su solicitud ha sido recibida y está siendo revisada por nuestros administradores. Este proceso es para garantizar la validez de todos nuestros miembros.</p>
+                <p>Recibirá otro correo electrónico una vez que su cuenta haya sido aprobada. ¡Apreciamos su paciencia!</p>
+              </div>
+              <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d;">
+                <p>Recibió este correo porque está registrado en Justicia Calificada. Este es un correo electrónico automatizado, por favor no responda.</p>
+              </div>
+            </div>
+          `
+        }
+      }
+      addDocumentNonBlocking(mailCollectionRef, userMailData);
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -195,39 +252,7 @@ export default function RegisterPage() {
       const lawyerDocRef = doc(firestore, "lawyers", user.uid);
       await setDoc(lawyerDocRef, lawyerData);
       
-      const mailCollectionRef = collection(firestore, "mail");
-      
-      const adminMailData = {
-        to: ['justiciacalificada@gmail.com'],
-        message: {
-            subject: `Nuevo Registro Pendiente: ${values.nombre} ${values.apellido}`,
-            html: `
-                <p>Un nuevo abogado se ha registrado y está esperando aprobación.</p>
-                <ul>
-                    <li><strong>Nombre:</strong> ${values.nombre} ${values.apellido}</li>
-                    <li><strong>Email:</strong> ${values.email}</li>
-                    <li><strong>Matrícula:</strong> ${values.matricula}</li>
-                    <li><strong>Ubicación:</strong> ${values.ciudad}, ${values.provincia}</li>
-                </ul>
-                <p>Por favor, ingrese al <a href="https://qualified-justice.web.app/admin/usuarios">panel de administración</a> para revisar la solicitud.</p>
-            `,
-        },
-      };
-      addDocumentNonBlocking(mailCollectionRef, adminMailData);
-      
-      const userMailData = {
-        to: [values.email],
-        message: {
-          subject: 'Hemos recibido su solicitud de registro',
-          html: `
-            <p>Hola ${values.nombre},</p>
-            <p>Gracias por registrarse en Justicia Calificada. Su solicitud ha sido recibida y está siendo revisada por nuestros administradores.</p>
-            <p>Recibirá otro correo electrónico una vez que su cuenta haya sido aprobada.</p>
-            <p>Atentamente,<br>El equipo de Justicia Calificada</p>
-          `
-        }
-      }
-      addDocumentNonBlocking(mailCollectionRef, userMailData);
+      sendRegistrationEmails(values.email, values.nombre, values.apellido, values.matricula, values.ciudad, values.provincia, 'Email');
       
       toast({
         title: 'Registro Enviado',
@@ -335,19 +360,7 @@ export default function RegisterPage() {
         const lawyerDocRef = doc(firestore, "lawyers", user.uid);
         await setDoc(lawyerDocRef, lawyerData);
         
-        const mailCollectionRef = collection(firestore, "mail");
-        
-        const adminMailData = {
-            to: ['justiciacalificada@gmail.com'],
-            message: { subject: `Nuevo Registro (Google) Pendiente: ${values.nombre} ${values.apellido}`, html: `<p>Un nuevo abogado se ha registrado con Google y está esperando aprobación.</p><ul><li><strong>Nombre:</strong> ${values.nombre} ${values.apellido}</li><li><strong>Email:</strong> ${user.email}</li><li><strong>Matrícula:</strong> ${values.matricula}</li><li><strong>Ubicación:</strong> ${values.ciudad}, ${values.provincia}</li></ul><p>Por favor, ingrese al <a href="https://qualified-justice.web.app/admin/usuarios">panel de administración</a> para revisar la solicitud.</p>` },
-        };
-        addDocumentNonBlocking(mailCollectionRef, adminMailData);
-        
-        const userMailData = {
-            to: [user.email!],
-            message: { subject: 'Hemos recibido su solicitud de registro', html: `<p>Hola ${values.nombre},</p><p>Gracias por registrarse en Justicia Calificada. Su solicitud ha sido recibida y está siendo revisada por nuestros administradores.</p><p>Recibirá otro correo electrónico una vez que su cuenta haya sido aprobada.</p><p>Atentamente,<br>El equipo de Justicia Calificada</p>` }
-        };
-        addDocumentNonBlocking(mailCollectionRef, userMailData);
+        sendRegistrationEmails(user.email!, values.nombre, values.apellido, values.matricula, values.ciudad, values.provincia, 'Google');
         
         toast({
             title: 'Registro Enviado',
@@ -619,4 +632,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

@@ -242,7 +242,7 @@ export default function CourthouseDetailPage() {
 
         <div className="lg:col-span-1">
           <div className="sticky top-24">
-            <RatingForm courthouseId={courthouseId} />
+            <RatingForm courthouseId={courthouseId} courthouseName={courthouse?.nombre} />
           </div>
         </div>
       </div>

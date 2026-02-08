@@ -1,5 +1,4 @@
-
-"use client";
+'use client';
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -83,7 +82,7 @@ const StarRating = ({
   );
 };
 
-export function RatingForm({ courthouseId }: { courthouseId: string }) {
+export function RatingForm({ courthouseId, courthouseName }: { courthouseId: string, courthouseName?: string }) {
   const { toast } = useToast();
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
@@ -143,21 +142,39 @@ export function RatingForm({ courthouseId }: { courthouseId: string }) {
     
     addDocumentNonBlocking(ratingsCollectionRef, newRatingData);
     
-    const mailData = {
-        to: ['justiciacalificada@gmail.com'],
-        message: {
-            subject: 'Nuevo Comentario Pendiente de Moderación',
-            html: `
-                <p>Un abogado ha dejado un nuevo comentario y está esperando moderación.</p>
-                <p><strong>ID de Juzgado:</strong> ${courthouseId}</p>
-                <p><strong>Comentario:</strong></p>
-                <blockquote style="border-left: 2px solid #ccc; padding-left: 1rem; margin-left: 1rem; font-style: italic;">${values.comentario}</blockquote>
-                <p>Por favor, ingrese al <a href="https://qualified-justice.web.app/admin/comentarios">panel de administración</a> para moderar el comentario.</p>
-            `,
-        },
-    };
-    const mailCollectionRef = collection(firestore, "mail");
-    addDocumentNonBlocking(mailCollectionRef, mailData);
+    if (values.comentario && values.comentario.trim().length > 0) {
+      const adminLink = `https://qualified-justice.web.app/admin/comentarios`;
+      const mailData = {
+          to: ['abengolea1@gmail.com'],
+          message: {
+              subject: 'Nuevo Comentario Pendiente de Moderación',
+              html: `
+                  <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                    <div style="background-color: #2a3b4f; color: #ffffff; padding: 20px; text-align: center;">
+                      <h1 style="margin: 0; font-size: 24px;">Justicia Calificada</h1>
+                    </div>
+                    <div style="padding: 20px; line-height: 1.6; color: #333;">
+                      <h2 style="color: #1a2c41;">Nuevo Comentario para Moderar</h2>
+                      <p>Un abogado ha dejado un nuevo comentario que requiere su aprobación.</p>
+                      <ul style="list-style-type: none; padding: 0;">
+                          <li style="padding: 5px 0;"><strong>Juzgado:</strong> ${courthouseName || courthouseId}</li>
+                          <li style="padding: 5px 0;"><strong>Usuario:</strong> ${user.displayName || user.email}</li>
+                      </ul>
+                      <div style="background-color: #f8f9fa; border-left: 4px solid #3b82f6; padding: 15px; margin: 15px 0;">
+                        <p style="margin: 0; font-style: italic;">"${values.comentario}"</p>
+                      </div>
+                      <a href="${adminLink}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 10px;">Moderar Comentario</a>
+                    </div>
+                    <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d;">
+                      <p>Este es un correo electrónico automatizado.</p>
+                    </div>
+                  </div>
+              `,
+          },
+      };
+      const mailCollectionRef = collection(firestore, "mail");
+      addDocumentNonBlocking(mailCollectionRef, mailData);
+    }
     
     toast({
       title: "Calificación Enviada",

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -52,18 +51,36 @@ export default function AdminCommentsPage() {
 
     const lawyer = lawyerMap.get(rating.lawyerId);
     const courthouseName = courthouseMap.get(rating.courthouseId) ?? 'un juzgado';
+    const statusText = status === 'approved' ? 'APROBADO' : 'RECHAZADO';
+    const link = `https://qualified-justice.web.app/juzgados/${rating.courthouseId}`;
 
     if (lawyer && lawyer.email) {
       const mailCollectionRef = collection(firestore, "mail");
       const mailData = {
         to: [lawyer.email],
         message: {
-          subject: `Su comentario en Justicia Calificada ha sido ${status === 'approved' ? 'aprobado' : 'rechazado'}`,
+          subject: `Su comentario sobre ${courthouseName} ha sido ${statusText.toLowerCase()}`,
           html: `
-            <p>Hola ${lawyer.nombre},</p>
-            <p>Le informamos que su comentario sobre <strong>${courthouseName}</strong> ha sido <strong>${status === 'approved' ? 'APROBADO' : 'RECHAZADO'}</strong>.</p>
-            ${status === 'approved' ? '<p>Su comentario ya es visible para toda la comunidad. ¡Gracias por su contribución!</p>' : '<p>Si cree que esto es un error o que su comentario cumplía con nuestras normas, por favor póngase en contacto con nosotros.</p>'}
-            <p>Atentamente,<br>El equipo de Justicia Calificada</p>
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+              <div style="background-color: #2a3b4f; color: #ffffff; padding: 20px; text-align: center;">
+                <h1 style="margin: 0; font-size: 24px;">Justicia Calificada</h1>
+              </div>
+              <div style="padding: 20px; line-height: 1.6; color: #333;">
+                <h2 style="color: #1a2c41;">Actualización de su Comentario</h2>
+                <p>Hola ${lawyer.nombre},</p>
+                <p>Le informamos que su comentario sobre el juzgado <strong>${courthouseName}</strong> ha sido <strong>${statusText}</strong>.</p>
+                ${status === 'approved' 
+                  ? `<p>Su aporte ya es visible para toda la comunidad y ayuda a construir una mejor estadística sobre la realidad judicial. ¡Gracias por su contribución!</p>
+                     <p>Puede ver su comentario y las demás calificaciones en la página del juzgado:</p>
+                     <a href="${link}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 10px;">Ver Juzgado</a>
+                    ` 
+                  : '<p>Lamentablemente, su comentario no cumplía con nuestras políticas de publicación. Si cree que esto es un error, por favor póngase en contacto con nosotros.</p>'
+                }
+              </div>
+              <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d;">
+                <p>Recibió este correo porque está registrado en Justicia Calificada. Este es un correo electrónico automatizado, por favor no responda.</p>
+              </div>
+            </div>
           `,
         },
       };

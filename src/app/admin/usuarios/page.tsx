@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -76,15 +75,33 @@ export default function AdminUsersPage() {
     updateDocumentNonBlocking(lawyerDocRef, { status });
 
     const mailCollectionRef = collection(firestore, "mail");
+    const statusText = status === 'approved' ? 'APROBADA' : 'RECHAZADA';
+    const loginLink = "https://qualified-justice.web.app/login";
+
     const mailData = {
       to: [userToUpdate.email],
       message: {
-        subject: `Su registro en Justicia Calificada ha sido ${status === 'approved' ? 'aprobado' : 'rechazado'}`,
+        subject: `Su registro en Justicia Calificada ha sido ${statusText.toLowerCase()}`,
         html: `
-          <p>Hola ${userToUpdate.nombre},</p>
-          <p>Le informamos que su solicitud de registro en Justicia Calificada ha sido <strong>${status === 'approved' ? 'APROBADA' : 'RECHAZADA'}</strong>.</p>
-          ${status === 'approved' ? '<p>Ya puede iniciar sesión en la plataforma y comenzar a calificar juzgados.</p>' : '<p>Si cree que esto es un error, por favor póngase en contacto con nosotros.</p>'}
-          <p>Atentamente,<br>El equipo de Justicia Calificada</p>
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+            <div style="background-color: #2a3b4f; color: #ffffff; padding: 20px; text-align: center;">
+              <h1 style="margin: 0; font-size: 24px;">Justicia Calificada</h1>
+            </div>
+            <div style="padding: 20px; line-height: 1.6; color: #333;">
+              <h2 style="color: #1a2c41;">Actualización de su Registro</h2>
+              <p>Hola ${userToUpdate.nombre},</p>
+              <p>Le informamos que su solicitud de registro en Justicia Calificada ha sido <strong>${statusText}</strong>.</p>
+              ${status === 'approved' 
+                ? `<p>¡Felicitaciones! Ya puede iniciar sesión en la plataforma y comenzar a calificar juzgados y contribuir con la comunidad.</p>
+                   <a href="${loginLink}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 10px;">Iniciar Sesión</a>
+                  ` 
+                : '<p>Si cree que esto es un error, por favor póngase en contacto con nosotros respondiendo a este correo o escribiendo a contacto@justiciacalificada.com.</p>'
+              }
+            </div>
+            <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d;">
+              <p>Recibió este correo porque está registrado en Justicia Calificada. Este es un correo electrónico automatizado, por favor no responda.</p>
+            </div>
+          </div>
         `,
       },
     };

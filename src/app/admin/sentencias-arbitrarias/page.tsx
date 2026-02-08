@@ -27,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useCollection, useFirebase, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirebase, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { collection, collectionGroup, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Timestamp } from 'firebase/firestore';
@@ -70,6 +70,44 @@ export default function AdminArbitrarySentencesPage() {
   const handleUpdateStatus = (sentence: ArbitrarySentence, status: 'approved' | 'rejected') => {
     const sentenceDocRef = doc(firestore, 'juzgados', sentence.courthouseId, 'arbitrary_sentences', sentence.id);
     updateDocumentNonBlocking(sentenceDocRef, { status });
+
+    const lawyer = lawyerMap.get(sentence.lawyerId);
+    const courthouseName = courthouseMap.get(sentence.courthouseId) ?? 'un juzgado';
+    const statusText = status === 'approved' ? 'APROBADA' : 'RECHAZADA';
+    const link = `https://qualified-justice.web.app/ranking-arbitrariedad`; // TODO: update if there's a specific page
+
+     if (lawyer && lawyer.email) {
+      const mailCollectionRef = collection(firestore, "mail");
+      const mailData = {
+        to: [lawyer.email],
+        message: {
+          subject: `Su carga de sentencia arbitraria ha sido ${statusText.toLowerCase()}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+              <div style="background-color: #2a3b4f; color: #ffffff; padding: 20px; text-align: center;">
+                <h1 style="margin: 0; font-size: 24px;">Justicia Calificada</h1>
+              </div>
+              <div style="padding: 20px; line-height: 1.6; color: #333;">
+                <h2 style="color: #1a2c41;">Actualización de su Carga</h2>
+                <p>Hola ${lawyer.nombre},</p>
+                <p>Le informamos que su carga de sentencia arbitraria sobre el caso <strong>${sentence.caseDetails.caseName}</strong> ha sido <strong>${statusText}</strong>.</p>
+                ${status === 'approved' 
+                  ? `<p>Su aporte ya es visible en el ranking de sentencias arbitrarias. ¡Gracias por contribuir a la transparencia del sistema judicial!</p>
+                     <a href="${link}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 10px;">Ver Ranking</a>
+                    ` 
+                  : '<p>Lamentablemente, su envío no pudo ser verificado o no cumplía con nuestras políticas. Si cree que esto es un error, por favor póngase en contacto con nosotros.</p>'
+                }
+              </div>
+              <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d;">
+                <p>Recibió este correo porque está registrado en Justicia Calificada. Este es un correo electrónico automatizado, por favor no responda.</p>
+              </div>
+            </div>
+          `,
+        },
+      };
+      addDocumentNonBlocking(mailCollectionRef, mailData);
+    }
+
 
     toast({
       title: 'Sentencia actualizada',
@@ -240,5 +278,3 @@ export default function AdminArbitrarySentencesPage() {
     </div>
   );
 }
-
-    

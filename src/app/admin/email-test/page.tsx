@@ -7,14 +7,20 @@ import { collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function AdminEmailTestPage() {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
-  const [recipient, setRecipient] = useState(user?.email || '');
+  const [recipient, setRecipient] = useState('');
   const [isSending, setIsSending] = useState(false);
+  
+  useEffect(() => {
+    if (user && user.email) {
+      setRecipient(user.email);
+    }
+  }, [user]);
 
   const handleSendTestEmail = () => {
     if (!firestore || !user) {
@@ -43,10 +49,20 @@ export default function AdminEmailTestPage() {
       message: {
         subject: 'Correo de Prueba desde el Panel de Admin - Justicia Calificada',
         html: `
-            <h1>¡El sistema de correos funciona!</h1>
-            <p>Este es un correo de prueba enviado desde el panel de administración de <strong>Justicia Calificada</strong>.</p>
-            <p>Si recibiste esto, la integración con el servicio de correo (Trigger Email) está configurada y operativa.</p>
-            <p>Enviado por: ${user.email}</p>
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+              <div style="background-color: #2a3b4f; color: #ffffff; padding: 20px; text-align: center;">
+                <h1 style="margin: 0; font-size: 24px;">Justicia Calificada</h1>
+              </div>
+              <div style="padding: 20px; line-height: 1.6; color: #333;">
+                <h2 style="color: #1a2c41;">¡El sistema de correos funciona!</h2>
+                <p>Este es un correo de prueba enviado desde el panel de administración de <strong>Justicia Calificada</strong>.</p>
+                <p>Si recibió esto, la integración con el servicio de correo (Trigger Email) está configurada y operativa.</p>
+                <p><em>Enviado por: ${user.email}</em></p>
+              </div>
+              <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d;">
+                <p>Recibió este correo porque está registrado en Justicia Calificada. Este es un correo electrónico automatizado, por favor no responda.</p>
+              </div>
+            </div>
         `,
       },
     };

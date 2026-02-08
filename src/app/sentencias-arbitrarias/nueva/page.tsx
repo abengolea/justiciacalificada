@@ -33,11 +33,12 @@ import {
     useUser,
     useCollection,
     useMemoFirebase,
-    useDoc
+    useDoc,
+    addDocumentNonBlocking,
 } from '@/firebase';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, ChevronsUpDown, Check, FileUp, Wand2, AlertTriangle } from 'lucide-react';
+import { Loader2, ChevronsUpDown, Check, FileUp, Wand2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -225,6 +226,39 @@ export default function NewArbitrarySentencePage() {
             };
             
             await setDoc(newDocRef, submissionData);
+
+            // Notify admin if a non-admin user submits
+            if (!isUserAdmin) {
+                const courthouseName = courthouses?.find(c => c.id === values.courthouseId)?.nombre || 'Desconocido';
+                const adminLink = `https://qualified-justice.web.app/admin/sentencias-arbitrarias`;
+                const mailCollectionRef = collection(firestore, "mail");
+                const adminMail = {
+                    to: ['abengolea1@gmail.com'],
+                    message: {
+                        subject: 'Nueva Sentencia Arbitraria para Revisión',
+                        html: `
+                        <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                            <div style="background-color: #2a3b4f; color: #ffffff; padding: 20px; text-align: center;">
+                            <h1 style="margin: 0; font-size: 24px;">Justicia Calificada</h1>
+                            </div>
+                            <div style="padding: 20px; line-height: 1.6; color: #333;">
+                            <h2 style="color: #1a2c41;">Nueva Sentencia para Revisar</h2>
+                            <p>Un abogado ha cargado una nueva sentencia arbitraria que requiere su aprobación.</p>
+                            <ul style="list-style-type: none; padding: 0;">
+                                <li style="padding: 5px 0;"><strong>Juzgado:</strong> ${courthouseName}</li>
+                                <li style="padding: 5px 0;"><strong>Carátula:</strong> ${values.caseName}</li>
+                                <li style="padding: 5px 0;"><strong>Enviado por:</strong> ${lawyer.nombre} ${lawyer.apellido}</li>
+                            </ul>
+                            <a href="${adminLink}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px;">Revisar Sentencia</a>
+                            </div>
+                            <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d;">
+                            <p>Este es un correo electrónico automatizado.</p>
+                            </div>
+                        </div>`
+                    }
+                };
+                addDocumentNonBlocking(mailCollectionRef, adminMail);
+            }
 
             const toastTitle = isUserAdmin ? "Sentencia Publicada" : "Carga Exitosa";
             const toastDescription = isUserAdmin
@@ -547,5 +581,3 @@ export default function NewArbitrarySentencePage() {
         </div>
     );
 }
-
-    
