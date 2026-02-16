@@ -7,9 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   Menu,
-  Facebook,
-  Twitter,
-  Instagram,
   ChevronDown,
   User as UserIcon,
   LogOut,
@@ -75,9 +72,9 @@ export function SiteHeader() {
       href: '/juzgados',
       subItems: [
         { title: 'Buscar', href: '/juzgados' },
-        { title: 'Comparar', href: '#' },
+        { title: 'Comparar', href: '/comparar' },
         { title: 'Ranking', href: '/ranking' },
-        { title: 'Proponer', href: '#' },
+        { title: 'Proponer', href: '/proponer' },
       ],
     },
     { title: 'CÓMO FUNCIONA', href: '/como-funciona' },
@@ -149,17 +146,6 @@ export function SiteHeader() {
                     </Button>
                 </>
               )}
-            <div className="hidden sm:flex items-center gap-3">
-              <a href="#" aria-label="Facebook">
-                <Facebook className="h-4 w-4" />
-              </a>
-              <a href="#" aria-label="Twitter">
-                <Twitter className="h-4 w-4" />
-              </a>
-              <a href="#" aria-label="Instagram">
-                <Instagram className="h-4 w-4" />
-              </a>
-            </div>
           </div>
         </div>
       </div>
@@ -183,9 +169,12 @@ export function SiteHeader() {
                 {mainNav.map((item) =>
                   item.subItems ? (
                     <div key={item.title} className="group relative">
-                      <div
+                      <button
+                        type="button"
+                        aria-haspopup="true"
+                        aria-expanded={pathname.startsWith(item.href)}
                         className={cn(
-                          'flex items-center gap-1 cursor-pointer transition-colors hover:text-primary',
+                          'flex items-center gap-1 cursor-pointer transition-colors hover:text-primary font-inherit text-sm font-medium bg-transparent border-0 p-0',
                           pathname.startsWith(item.href)
                             ? 'text-primary font-semibold'
                             : 'text-foreground/80'
@@ -193,8 +182,8 @@ export function SiteHeader() {
                       >
                         {item.title}
                         <ChevronDown className="h-4 w-4 transition-transform duration-200 group-hover:rotate-180" />
-                      </div>
-                      <div className="absolute top-full right-0 z-10 hidden pt-2 group-hover:block">
+                      </button>
+                      <div className="absolute top-full right-0 z-10 hidden pt-2 group-hover:block focus-within:block">
                         <div className="w-40 origin-top-right rounded-md bg-popover text-popover-foreground shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                           <div
                             className="py-1"

@@ -15,6 +15,11 @@ export function FirebaseErrorListener() {
   useEffect(() => {
     // The callback now expects a strongly-typed error, matching the event payload.
     const handleError = (error: FirestorePermissionError) => {
+      // Don't crash the app for admin_messages list denial: the badge will show 0.
+      // Ensure lawyers/{uid} has role: 'admin' in Firestore to fix the permission.
+      if (error.request?.path?.includes('admin_messages') && error.request?.method === 'list') {
+        return;
+      }
       // Set error in state to trigger a re-render.
       setError(error);
     };

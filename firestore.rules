@@ -96,7 +96,10 @@ service cloud.firestore {
         // An admin can update any user's profile, except for the core immutable fields.
         let adminCanUpdate = isAdmin() && coreFieldsUnchanged;
 
-        return ownerCanUpdate || adminCanUpdate;
+        // One-time: abengolea1@gmail.com can set their own role to admin (e.g. if profile existed as user first).
+        let adminSelfPromotion = isOwner(uid) && data.email == 'abengolea1@gmail.com' && data.role == 'admin' && coreFieldsUnchanged;
+
+        return ownerCanUpdate || adminCanUpdate || adminSelfPromotion;
     }
 
 
@@ -222,6 +225,10 @@ service cloud.firestore {
     // Collection for logging import errors
     match /import_errors/{docId}      { allow read, write: if isAdmin(); }
 
+    // Partners: clientes que pueden embeber el widget (Colegios de Abogados, etc.)
+    // Solo admins gestionan; la API server-side valida apiKey
+    match /partners/{partnerId}      { allow read, write: if isAdmin(); }
+
 
     // This rule allows the collection group query for 'ratings' to work.
     // It's needed for the main courthouse list page to calculate average ratings.
@@ -237,6 +244,19 @@ service cloud.firestore {
     match /mail/{mailId} {
       allow create: if isSignedIn();
       allow read, update, delete: if false;
+    }
+
+    // Mensajes internos para denuncias/reportes de usuarios (nombre mal, juzgado no encontrado, etc.)
+    // Para leer admin_messages, el documento lawyers/{request.auth.uid} debe tener role == 'admin'.
+    match /admin_messages/{msgId} {
+      allow create: if isApprovedLawyer() &&
+        request.resource.data.lawyerId == request.auth.uid &&
+        request.resource.data.type is string &&
+        request.resource.data.message is string &&
+        request.resource.data.message.size() > 0 &&
+        request.resource.data.message.size() <= 500 &&
+        request.resource.data.status == 'unread';
+      allow read, update, delete: if isAdmin();
     }
   }
 }

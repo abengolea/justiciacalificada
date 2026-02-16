@@ -1,6 +1,12 @@
+import type { Metadata } from 'next';
 import CourthouseList from "@/components/juzgados/courthouse-list";
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Base de Datos de Juzgados | Justicia Calificada',
+  description: 'Busque, filtre y explore las calificaciones de los juzgados de toda Argentina. Calificaciones anónimas de abogados.',
+};
 
 export default function JuzgadosPage() {
   return (

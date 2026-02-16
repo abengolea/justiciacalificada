@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, MapPin, PenSquare } from "lucide-react";
+import { Star, MapPin, PenSquare, AlertCircle } from "lucide-react";
 import type { Courthouse } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ReportarProblema } from "./reportar-problema";
 
 interface CourthouseCardProps {
   courthouse: Courthouse;
@@ -58,7 +59,17 @@ export function CourthouseCard({ courthouse, averageRating, ratingCount }: Court
             {courthouse.instancia && <Badge variant="outline">{courthouse.instancia}</Badge>}
           </div>
         </CardContent>
-        <CardFooter className="pt-4 justify-end">
+        <CardFooter className="pt-4 justify-between">
+            <ReportarProblema
+              courthouseId={courthouse.id}
+              courthouseName={courthouse.nombre}
+              trigger={
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                  <AlertCircle className="h-5 w-5" />
+                  <span className="sr-only">Reportar problema</span>
+                </Button>
+              }
+            />
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>

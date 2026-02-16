@@ -82,7 +82,7 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Button asChild variant="outline">
-            <Link href="/admin/juzgados">Carga Masiva de Datos</Link>
+            <Link href="/admin/juzgados">Gestionar Juzgados</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/admin/correccion">Corregir y Editar Juzgados</Link>
@@ -92,6 +92,9 @@ export default function AdminDashboard() {
           </Button>
           <Button asChild variant="outline">
             <Link href="/admin/comentarios">Moderar Comentarios</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/admin/partners">Gestionar Partners / Embed</Link>
           </Button>
         </CardContent>
       </Card>

@@ -40,6 +40,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { emailLayout, emailButton, emailList, emailStyles } from '@/lib/email-templates';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -156,33 +157,25 @@ export default function RegisterPage() {
   const sendRegistrationEmails = (email: string, nombre: string, apellido: string, matricula: string, ciudad: string, provincia: string, provider: 'Email' | 'Google') => {
       const mailCollectionRef = collection(firestore, "mail");
       const adminLink = "https://qualified-justice.web.app/admin/usuarios";
-
       const adminMailData = {
         to: ['abengolea1@gmail.com'],
         message: {
             subject: `Nuevo Registro Pendiente: ${nombre} ${apellido}`,
-            html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-              <div style="background-color: #2a3b4f; color: #ffffff; padding: 20px; text-align: center;">
-                <h1 style="margin: 0; font-size: 24px;">Justicia Calificada</h1>
-              </div>
-              <div style="padding: 20px; line-height: 1.6; color: #333;">
-                <h2 style="color: #1a2c41;">Nuevo Registro Pendiente</h2>
-                <p>Un nuevo abogado se ha registrado y está esperando aprobación.</p>
-                <ul style="list-style-type: none; padding: 0;">
-                    <li style="padding: 5px 0;"><strong>Nombre:</strong> ${nombre} ${apellido}</li>
-                    <li style="padding: 5px 0;"><strong>Email:</strong> ${email}</li>
-                    <li style="padding: 5px 0;"><strong>Matrícula:</strong> ${matricula}</li>
-                    <li style="padding: 5px 0;"><strong>Ubicación:</strong> ${ciudad}, ${provincia}</li>
-                    <li style="padding: 5px 0;"><strong>Método de registro:</strong> ${provider}</li>
-                </ul>
-                <a href="${adminLink}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px;">Revisar Solicitud</a>
-              </div>
-              <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d;">
-                <p>Este es un correo electrónico automatizado.</p>
-              </div>
-            </div>
-            `,
+            html: emailLayout({
+              body: `
+                <h2 style="${emailStyles.heading}">Nuevo Registro Pendiente</h2>
+                <p style="${emailStyles.body}">Un nuevo abogado se ha registrado y está esperando aprobación.</p>
+                ${emailList([
+                  { label: "Nombre", value: `${nombre} ${apellido}` },
+                  { label: "Email", value: email },
+                  { label: "Matrícula", value: matricula },
+                  { label: "Ubicación", value: `${ciudad}, ${provincia}` },
+                  { label: "Método de registro", value: provider },
+                ])}
+                ${emailButton(adminLink, "Revisar Solicitud")}
+              `,
+              footer: "Este es un correo electrónico automatizado.",
+            }),
         },
       };
       addDocumentNonBlocking(mailCollectionRef, adminMailData);
@@ -191,22 +184,14 @@ export default function RegisterPage() {
         to: [email],
         message: {
           subject: 'Hemos recibido su solicitud de registro en Justicia Calificada',
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-              <div style="background-color: #2a3b4f; color: #ffffff; padding: 20px; text-align: center;">
-                <h1 style="margin: 0; font-size: 24px;">Justicia Calificada</h1>
-              </div>
-              <div style="padding: 20px; line-height: 1.6; color: #333;">
-                <h2 style="color: #1a2c41;">¡Gracias por registrarse!</h2>
-                <p>Hola ${nombre},</p>
-                <p>Su solicitud ha sido recibida y está siendo revisada por nuestros administradores. Este proceso es para garantizar la validez de todos nuestros miembros.</p>
-                <p>Recibirá otro correo electrónico una vez que su cuenta haya sido aprobada. ¡Apreciamos su paciencia!</p>
-              </div>
-              <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d;">
-                <p>Recibió este correo porque está registrado en Justicia Calificada. Este es un correo electrónico automatizado, por favor no responda.</p>
-              </div>
-            </div>
-          `
+          html: emailLayout({
+            body: `
+              <h2 style="${emailStyles.heading}">¡Gracias por registrarse!</h2>
+              <p style="${emailStyles.body}">Hola ${nombre},</p>
+              <p style="${emailStyles.body}">Su solicitud ha sido recibida y está siendo revisada por nuestros administradores. Este proceso es para garantizar la validez de todos nuestros miembros.</p>
+              <p style="${emailStyles.body}">Recibirá otro correo electrónico una vez que su cuenta haya sido aprobada. ¡Apreciamos su paciencia!</p>
+            `,
+          }),
         }
       }
       addDocumentNonBlocking(mailCollectionRef, userMailData);

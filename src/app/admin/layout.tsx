@@ -9,24 +9,27 @@ import {
   MessageSquare,
   PanelLeft,
   Loader2,
-  Upload,
   Pencil,
   Scale,
   Menu,
   Mail,
+  Bell,
+  Globe,
 } from 'lucide-react';
 import { AppLogo } from '@/components/icons';
 import { Button } from '@/components/ui/button';
 import { useUser, useFirebase } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
+import { useCollection, useMemoFirebase } from '@/firebase';
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
-const NavLink = ({ href, children, onClick }: { href: string; children: ReactNode, onClick?: () => void }) => {
+const NavLink = ({ href, children, onClick, badge }: { href: string; children: ReactNode; onClick?: () => void; badge?: number }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
   return (
@@ -39,24 +42,29 @@ const NavLink = ({ href, children, onClick }: { href: string; children: ReactNod
       )}
     >
       {children}
+      {badge !== undefined && badge > 0 && (
+        <Badge variant="destructive" className="ml-auto h-5 min-w-5 px-1.5 text-xs">
+          {badge > 99 ? '99+' : badge}
+        </Badge>
+      )}
     </Link>
   );
 };
 
 
-const AdminNavContent = ({ onLinkClick }: { onLinkClick?: () => void }) => (
+const AdminNavContent = ({ onLinkClick, unreadMessages }: { onLinkClick?: () => void; unreadMessages?: number }) => (
     <>
         <NavLink href="/admin" onClick={onLinkClick}>
             <Home className="h-4 w-4" />
             Dashboard
         </NavLink>
+        <NavLink href="/admin/mensajes" onClick={onLinkClick} badge={unreadMessages ?? 0}>
+            <Bell className="h-4 w-4" />
+            Mensajes
+        </NavLink>
         <NavLink href="/admin/usuarios" onClick={onLinkClick}>
             <Users className="h-4 w-4" />
             Usuarios
-        </NavLink>
-        <NavLink href="/admin/juzgados" onClick={onLinkClick}>
-            <Upload className="h-4 w-4" />
-            Carga Masiva
         </NavLink>
         <NavLink href="/admin/correccion" onClick={onLinkClick}>
             <Pencil className="h-4 w-4" />
@@ -74,6 +82,10 @@ const AdminNavContent = ({ onLinkClick }: { onLinkClick?: () => void }) => (
             <Mail className="h-4 w-4" />
             Test de Correo
         </NavLink>
+        <NavLink href="/admin/partners" onClick={onLinkClick}>
+            <Globe className="h-4 w-4" />
+            Partners / Embed
+        </NavLink>
     </>
 );
 
@@ -85,6 +97,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [isMobileSheetOpen, setMobileSheetOpen] = useState(false);
+
+  const unreadMessagesQuery = useMemoFirebase(
+    () => (firestore && isAdmin ? query(collection(firestore, 'admin_messages'), where('status', '==', 'unread')) : null),
+    [firestore, isAdmin]
+  );
+  const { data: unreadMessages } = useCollection<{ id: string }>(unreadMessagesQuery);
+  const unreadCount = unreadMessages?.length ?? 0;
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -144,7 +163,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
           <div className="flex-1">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-                <AdminNavContent />
+                <AdminNavContent unreadMessages={unreadCount} />
             </nav>
           </div>
           <div className="mt-auto p-4">
@@ -171,13 +190,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <SheetContent side="left" className="flex flex-col">
               <nav className="grid gap-2 text-lg font-medium">
                 <Link
-                  href="#"
+                  href="/admin"
                   className="flex items-center gap-2 text-lg font-semibold mb-4"
                 >
                   <AppLogo className="h-6 w-6" />
                   <span className="">Panel de Admin</span>
                 </Link>
-                <AdminNavContent onLinkClick={() => setMobileSheetOpen(false)} />
+                <AdminNavContent onLinkClick={() => setMobileSheetOpen(false)} unreadMessages={unreadCount} />
               </nav>
               <div className="mt-auto">
                 <Link href="/" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary">

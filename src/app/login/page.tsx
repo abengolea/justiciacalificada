@@ -26,8 +26,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, type User } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, sendPasswordResetEmail, type User } from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 
@@ -50,6 +58,9 @@ export default function LoginPage() {
   const router = useRouter();
   const { auth, firestore } = useFirebase();
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -74,6 +85,17 @@ export default function LoginPage() {
               provincia: 'Buenos Aires'
             });
           }
+        }
+
+        // abengolea1@gmail.com is always admin: ensure role is set (e.g. if profile existed as user first).
+        if (user.email === 'abengolea1@gmail.com' && lawyerData.role !== 'admin') {
+          updateDocumentNonBlocking(lawyerProfileRef, { role: 'admin' });
+          toast({
+            title: 'Rol de administrador actualizado',
+            description: 'Bienvenido al panel de administración.',
+          });
+          router.push('/admin');
+          return;
         }
         
         if (lawyerData.role === 'admin') {
@@ -225,7 +247,16 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Contraseña</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Contraseña</FormLabel>
+                      <button
+                        type="button"
+                        className="text-sm text-muted-foreground hover:text-primary underline"
+                        onClick={() => setForgotOpen(true)}
+                      >
+                        ¿Olvidó su contraseña?
+                      </button>
+                    </div>
                     <FormControl>
                       <Input type="password" {...field} disabled={isLoading}/>
                     </FormControl>
@@ -266,6 +297,70 @@ export default function LoginPage() {
           </form>
         </Form>
       </Card>
+
+      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Recuperar contraseña</DialogTitle>
+            <DialogDescription>
+              Ingrese el correo electrónico de su cuenta. Le enviaremos un enlace para restablecer la contraseña.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="forgot-email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="su@email.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                disabled={forgotLoading}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setForgotOpen(false)} disabled={forgotLoading}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={forgotLoading || !forgotEmail.trim()}
+              onClick={async () => {
+                const email = forgotEmail.trim();
+                if (!email) return;
+                setForgotLoading(true);
+                try {
+                  await sendPasswordResetEmail(auth, email);
+                  toast({
+                    title: 'Correo enviado',
+                    description: 'Revise su bandeja de entrada (y la carpeta de spam) para restablecer la contraseña.',
+                  });
+                  setForgotOpen(false);
+                  setForgotEmail('');
+                } catch (err: unknown) {
+                  const message = err && typeof err === 'object' && 'code' in err
+                    ? (err as { code: string }).code === 'auth/user-not-found'
+                      ? 'No existe una cuenta con ese correo.'
+                      : 'No se pudo enviar el correo. Intente de nuevo.'
+                    : 'No se pudo enviar el correo. Intente de nuevo.';
+                  toast({
+                    title: 'Error',
+                    description: message,
+                    variant: 'destructive',
+                  });
+                } finally {
+                  setForgotLoading(false);
+                }
+              }}
+            >
+              {forgotLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Enviar enlace
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

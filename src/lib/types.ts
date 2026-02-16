@@ -89,4 +89,32 @@ export interface ArbitrarySentence {
   status: 'pending' | 'approved' | 'rejected';
 }
 
+export type AdminMessageType = 'not_found' | 'wrong_data';
+
+export interface AdminMessage {
+  id: string;
+  lawyerId: string;
+  type: AdminMessageType;
+  message: string;
+  courthouseId?: string;
+  courthouseName?: string;
+  status: 'unread' | 'read' | 'resolved';
+  createdAt: any; // Timestamp
+  lawyerEmail?: string;
+  lawyerName?: string;
+}
+
+/** Partner/cliente que puede embeber el widget en su web (ej: Colegio de Abogados) */
+export interface Partner {
+  id: string;
+  nombre: string;
+  apiKey: string;
+  /** Ciudades permitidas para filtrar (ej: ["San Nicolás"]) */
+  ciudadesPermitidas: string[];
+  /** Dependencias/provincias permitidas (ej: ["Buenos Aires"]) */
+  dependenciasPermitidas: string[];
+  activo: boolean;
+  createdAt?: any;
+}
+
     

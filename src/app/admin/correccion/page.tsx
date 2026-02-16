@@ -9,11 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Wand2, Loader2, Save, X, Pencil, AlertTriangle, PlusCircle } from 'lucide-react';
+import { Wand2, Loader2, Save, X, Pencil, AlertTriangle, PlusCircle, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAiAnalysis } from '@/app/actions';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 type Correction = {
@@ -35,6 +43,12 @@ export default function DataCorrectionPage() {
     const [analysis, setAnalysis] = useState<Correction[] | null>(null);
     const [isAnalyzing, startAnalysisTransition] = useTransition();
     const [showOnlyWithSuggestions, setShowOnlyWithSuggestions] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [filterNombre, setFilterNombre] = useState('');
+    const [filterCiudad, setFilterCiudad] = useState('');
+    const [filterDependencia, setFilterDependencia] = useState('');
+    const [filterFuero, setFilterFuero] = useState('');
+    const [filterInstancia, setFilterInstancia] = useState('');
 
     const analysisMap = useMemo(() => {
         if (!analysis) return new Map();
@@ -48,11 +62,25 @@ export default function DataCorrectionPage() {
     
     const filteredJuzgados = useMemo(() => {
         if (!juzgados) return [];
-        if (!showOnlyWithSuggestions || !analysis || analysis.length === 0) {
-            return juzgados;
+        let list = juzgados;
+        if (showOnlyWithSuggestions && analysis && analysis.length > 0) {
+            list = list.filter(juzgado => analysisMap.has(juzgado.id));
         }
-        return juzgados.filter(juzgado => analysisMap.has(juzgado.id));
-    }, [juzgados, showOnlyWithSuggestions, analysis, analysisMap]);
+        const n = filterNombre.trim().toLowerCase();
+        const c = filterCiudad.trim().toLowerCase();
+        const d = filterDependencia.trim().toLowerCase();
+        const f = filterFuero.trim().toLowerCase();
+        const i = filterInstancia.trim().toLowerCase();
+        if (!n && !c && !d && !f && !i) return list;
+        return list.filter(j => {
+            if (n && !(j.nombre || '').toLowerCase().includes(n)) return false;
+            if (c && !(j.ciudad || '').toLowerCase().includes(c)) return false;
+            if (d && !(j.dependencia || '').toLowerCase().includes(d)) return false;
+            if (f && !(j.fuero || '').toLowerCase().includes(f)) return false;
+            if (i && !(j.instancia || '').toLowerCase().includes(i)) return false;
+            return true;
+        });
+    }, [juzgados, showOnlyWithSuggestions, analysis, analysisMap, filterNombre, filterCiudad, filterDependencia, filterFuero, filterInstancia]);
 
     const handleAnalyze = () => {
         if (!juzgados || juzgados.length === 0) {
@@ -133,53 +161,104 @@ export default function DataCorrectionPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-2">
                 <h1 className="text-2xl font-bold">Editar Juzgados</h1>
-                <Button asChild>
-                    <Link href="/admin/juzgados/nuevo">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Crear Juzgado
-                    </Link>
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setSearchOpen(true)}>
+                        <Search className="mr-2 h-4 w-4" />
+                        Buscar juzgados
+                    </Button>
+                    <Button asChild>
+                        <Link href="/admin/juzgados/nuevo">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Crear Juzgado
+                        </Link>
+                    </Button>
+                </div>
             </div>
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-xl">Asistente de IA para Corrección</CardTitle>
-                    <CardDescription>
-                        Utilice la asistencia de IA para detectar y corregir inconsistencias en los datos de los juzgados.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-wrap items-center gap-6">
-                        <Button onClick={handleAnalyze} disabled={isAnalyzing || isLoadingJuzgados}>
-                            {isAnalyzing ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Wand2 className="mr-2 h-4 w-4" />
-                            )}
-                            Analizar con IA
-                        </Button>
-                        <div className="flex items-center space-x-2">
-                            <Switch
-                                id="filter-suggestions"
-                                checked={showOnlyWithSuggestions}
-                                onCheckedChange={setShowOnlyWithSuggestions}
-                                disabled={!analysis || analysis.length === 0}
+            <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Buscar juzgados</DialogTitle>
+                        <DialogDescription>
+                            Filtrar la lista por nombre u otros criterios. Deje en blanco los que no quiera usar.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="filter-nombre">Nombre</Label>
+                            <Input
+                                id="filter-nombre"
+                                placeholder="Ej: Primera Instancia..."
+                                value={filterNombre}
+                                onChange={e => setFilterNombre(e.target.value)}
                             />
-                            <Label 
-                                htmlFor="filter-suggestions" 
-                                className={cn((!analysis || analysis.length === 0) && "text-muted-foreground/50 cursor-not-allowed")}
-                            >
-                                Mostrar solo con observaciones
-                            </Label>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="filter-ciudad">Ciudad</Label>
+                            <Input
+                                id="filter-ciudad"
+                                placeholder="Ej: CABA, Córdoba..."
+                                value={filterCiudad}
+                                onChange={e => setFilterCiudad(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="filter-dependencia">Dependencia (Provincia)</Label>
+                            <Input
+                                id="filter-dependencia"
+                                placeholder="Ej: Buenos Aires..."
+                                value={filterDependencia}
+                                onChange={e => setFilterDependencia(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="filter-fuero">Fuero</Label>
+                            <Input
+                                id="filter-fuero"
+                                placeholder="Ej: Civil, Penal..."
+                                value={filterFuero}
+                                onChange={e => setFilterFuero(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="filter-instancia">Instancia</Label>
+                            <Input
+                                id="filter-instancia"
+                                placeholder="Ej: Primera, Cámara..."
+                                value={filterInstancia}
+                                onChange={e => setFilterInstancia(e.target.value)}
+                            />
                         </div>
                     </div>
-                </CardContent>
-            </Card>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setFilterNombre('');
+                                setFilterCiudad('');
+                                setFilterDependencia('');
+                                setFilterFuero('');
+                                setFilterInstancia('');
+                            }}
+                        >
+                            Limpiar filtros
+                        </Button>
+                        <Button onClick={() => setSearchOpen(false)}>
+                            Cerrar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-            <Card>
+            <Card id="lista-juzgados">
                 <CardHeader>
                     <CardTitle>Lista de Juzgados</CardTitle>
+                    {(filterNombre || filterCiudad || filterDependencia || filterFuero || filterInstancia) && (
+                        <CardDescription>
+                            Mostrando {filteredJuzgados?.length ?? 0} resultado(s) con filtros aplicados.
+                        </CardDescription>
+                    )}
                 </CardHeader>
                 <CardContent>
                     <div className="border rounded-lg overflow-x-auto">

@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Belleza } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { SiteHeader } from "@/components/layout/header";
-import { SiteFooter } from "@/components/layout/footer";
+import { EmbedAwareLayout } from "@/components/layout/embed-aware-layout";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 
@@ -51,11 +50,7 @@ export default function RootLayout({
         )}
       >
         <FirebaseClientProvider>
-          <div className="relative flex min-h-screen flex-col">
-            <SiteHeader />
-            <main className="flex-1">{children}</main>
-            <SiteFooter />
-          </div>
+          <EmbedAwareLayout>{children}</EmbedAwareLayout>
           <Toaster />
         </FirebaseClientProvider>
       </body>

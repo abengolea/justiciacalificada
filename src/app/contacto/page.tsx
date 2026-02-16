@@ -6,11 +6,14 @@ import { Mail, MapPin, Loader2 } from "lucide-react";
 import { useFirebase, useUser, addDocumentNonBlocking } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminStatus } from "@/hooks/use-admin-status";
 import Link from "next/link";
+import { emailLayout, emailStyles } from "@/lib/email-templates";
 
 export default function ContactoPage() {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const { isAdmin } = useAdminStatus();
   const { toast } = useToast();
 
   const handleSendTestEmail = () => {
@@ -21,7 +24,14 @@ export default function ContactoPage() {
       to: ['abengolea1@gmail.com'],
       message: {
         subject: 'Correo de Prueba - Justicia Calificada',
-        html: 'Este es un correo de prueba para verificar que la configuración de envío de correos funciona correctamente. ¡Felicitaciones!',
+        html: emailLayout({
+          body: `
+            <h2 style="${emailStyles.heading}">Correo de Prueba</h2>
+            <p style="${emailStyles.body}">Este es un correo de prueba para verificar que la configuración de envío de correos funciona correctamente.</p>
+            <p style="${emailStyles.body}">¡Felicitaciones!</p>
+          `,
+          footer: "Este es un correo electrónico automatizado.",
+        }),
       },
     };
 
@@ -84,32 +94,26 @@ export default function ContactoPage() {
             electrónico proporcionado.
           </p>
 
-          <div className="pt-6 border-t">
-            <h3 className="text-lg font-semibold mb-2">Prueba de Envío</h3>
-            {isUserLoading ? (
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Verificando autenticación...
-              </div>
-            ) : user ? (
-              <>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Está conectado como {user.email}. Haga clic para enviar un correo de prueba.
-                </p>
-                <Button onClick={handleSendTestEmail} variant="secondary">
-                  Enviar Correo de Prueba
-                </Button>
-              </>
-            ) : (
-               <p className="text-sm text-muted-foreground">
-                Por favor,{' '}
-                <Link href="/login" className="underline hover:text-primary">
-                  inicie sesión
-                </Link>{' '}
-                para enviar un correo de prueba.
-              </p>
-            )}
-          </div>
+          {isAdmin && (
+            <div className="pt-6 border-t">
+              <h3 className="text-lg font-semibold mb-2">Prueba de Envío (solo administradores)</h3>
+              {isUserLoading ? (
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verificando autenticación...
+                </div>
+              ) : user ? (
+                <>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Está conectado como {user.email}. Haga clic para enviar un correo de prueba.
+                  </p>
+                  <Button onClick={handleSendTestEmail} variant="secondary">
+                    Enviar Correo de Prueba
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

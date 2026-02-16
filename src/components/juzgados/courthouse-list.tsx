@@ -22,11 +22,28 @@ import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card"
 import { useAdminStatus } from "@/hooks/use-admin-status";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ReportarProblema } from "./reportar-problema";
 
 interface Fuero { id: string; nombre: string; }
 interface Provincia { id: string; nombre: string; }
 
-export default function CourthouseList() {
+export interface EmbedFilters {
+  /** Dependencia/provincia (ej: "Buenos Aires") */
+  dependencia?: string;
+  /** Ciudad (ej: "San Nicolás") - se usa como búsqueda inicial */
+  ciudad?: string;
+  /** Fuero (ej: "Civil") */
+  fuero?: string;
+}
+
+interface CourthouseListProps {
+  /** Filtros iniciales para modo embed (desde URL) */
+  embedFilters?: EmbedFilters;
+  /** Ocultar filtros para vista compacta en iframe */
+  compact?: boolean;
+}
+
+export default function CourthouseList({ embedFilters, compact = false }: CourthouseListProps = {}) {
   const [isClient, setIsClient] = useState(false);
   const [view, setView] = useState<'grid' | 'list'>('grid');
 
@@ -57,12 +74,12 @@ export default function CourthouseList() {
 
   const { isAdmin, isLoading: isLoadingAdmin } = useAdminStatus();
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [dependenciaFilter, setDependenciaFilter] = useState("all");
-  const [fueroFilter, setFueroFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState(embedFilters?.ciudad ?? "");
+  const [dependenciaFilter, setDependenciaFilter] = useState(embedFilters?.dependencia ?? "all");
+  const [fueroFilter, setFueroFilter] = useState(embedFilters?.fuero ?? "all");
   const [sortBy, setSortBy] = useState("rating-desc"); // Default sort
   
-  const defaultFilterApplied = useRef(false);
+  const defaultFilterApplied = useRef(!!embedFilters);
   
   const dependenciasList = useMemo(
     () => ["all", ...Array.from(new Set((provinciasData || []).map((p) => p.nombre).filter(Boolean))).sort()],
@@ -70,13 +87,17 @@ export default function CourthouseList() {
   );
 
   useEffect(() => {
-    if (lawyerProfile?.provincia && !defaultFilterApplied.current) {
-      if (dependenciasList.includes(lawyerProfile.provincia)) {
-        setDependenciaFilter(lawyerProfile.provincia);
-        defaultFilterApplied.current = true;
-      }
+    if (defaultFilterApplied.current) return;
+    if (embedFilters?.dependencia && dependenciasList.includes(embedFilters.dependencia)) {
+      setDependenciaFilter(embedFilters.dependencia);
+      defaultFilterApplied.current = true;
+      return;
     }
-  }, [lawyerProfile, dependenciasList]);
+    if (lawyerProfile?.provincia && dependenciasList.includes(lawyerProfile.provincia)) {
+      setDependenciaFilter(lawyerProfile.provincia);
+      defaultFilterApplied.current = true;
+    }
+  }, [lawyerProfile, dependenciasList, embedFilters?.dependencia]);
 
   const fuerosList = useMemo(
     () => ["all", ...Array.from(new Set((fueros || []).map((f) => f.nombre).filter(Boolean))).sort()],
@@ -183,12 +204,19 @@ export default function CourthouseList() {
 
   return (
     <div>
-      <div className="mb-6 p-4 bg-card rounded-lg border">
-         {lawyerProfile?.provincia && defaultFilterApplied.current && dependenciaFilter === lawyerProfile.provincia && (
+      <div className={compact ? "mb-4" : "mb-6 p-4 bg-card rounded-lg border"}>
+         {embedFilters && (embedFilters.ciudad || embedFilters.dependencia || embedFilters.fuero) && (
+            <div className="mb-4 text-sm text-muted-foreground p-2 rounded-md bg-accent/20 border border-accent/50">
+                Mostrando juzgados de <strong>{[embedFilters.ciudad, embedFilters.dependencia, embedFilters.fuero].filter(Boolean).join(" · ")}</strong>. Cambia los filtros para ver otros.
+            </div>
+        )}
+         {!embedFilters && lawyerProfile?.provincia && defaultFilterApplied.current && dependenciaFilter === lawyerProfile.provincia && (
             <div className="mb-4 text-sm text-muted-foreground p-2 rounded-md bg-accent/20 border border-accent/50">
                 Mostrando juzgados para <strong>{lawyerProfile.provincia}</strong> por defecto. Cambia el filtro para ver otros.
             </div>
         )}
+        {!compact && (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="relative lg:col-span-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -246,7 +274,9 @@ export default function CourthouseList() {
                     <List className="h-4 w-4" />
                 </Button>
             </div>
-        </div>
+            </div>
+        </>
+        )}
       </div>
       <div>
         {showLoading ? (
@@ -295,9 +325,14 @@ export default function CourthouseList() {
         ) : (
           <div className="col-span-full text-center py-10">
             { isAnyFilterActive ? (
-                <p className="text-muted-foreground">
+                <div className="flex flex-col items-center gap-4">
+                  <p className="text-muted-foreground">
                     No se encontraron juzgados que coincidan con su búsqueda.
-                </p>
+                  </p>
+                  {user && (
+                    <ReportarProblema noResults variant="outline" />
+                  )}
+                </div>
              ) : isAdmin ? (
                 <div className="flex flex-col items-center gap-4">
                   <p className="text-muted-foreground">Aún no hay juzgados en la base de datos.</p>

@@ -23,6 +23,7 @@ import {
   MapPin,
   Phone,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -30,9 +31,10 @@ import { Rating, ratingCategories, RatingCategories, Courthouse } from "@/lib/ty
 import { CommentCard } from "@/components/juzgados/comment-card";
 import { RatingForm } from "@/components/juzgados/rating-form";
 import AiSummary from "@/components/juzgados/ai-summary";
-import { useDoc, useCollection, useFirebase, useMemoFirebase } from "@/firebase";
+import { useDoc, useCollection, useFirebase, useMemoFirebase, useUser } from "@/firebase";
 import { doc, collection } from "firebase/firestore";
 import { useMemo } from "react";
+import { ReportarProblema } from "@/components/juzgados/reportar-problema";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const iconMap: Record<keyof RatingCategories, React.ReactNode> = {
@@ -101,6 +103,7 @@ function getAverageRatings(ratings: Rating[]) {
 export default function CourthouseDetailPage() {
   const params = useParams();
   const { firestore } = useFirebase();
+  const { user } = useUser();
   const courthouseId = params.id as string;
 
   const courthouseDocRef = useMemoFirebase(() => doc(firestore, 'juzgados', courthouseId), [firestore, courthouseId]);
@@ -124,11 +127,22 @@ export default function CourthouseDetailPage() {
         <div className="lg:col-span-2 space-y-8">
           <Card>
             <CardHeader>
-              {isLoading ? <Skeleton className="h-9 w-3/4" /> : (
-                <CardTitle className="text-3xl font-headline text-primary">
-                  {courthouse?.nombre}
-                </CardTitle>
-              )}
+              <div className="flex justify-between items-start gap-4">
+                <div>
+                  {isLoading ? <Skeleton className="h-9 w-3/4" /> : (
+                    <CardTitle className="text-3xl font-headline text-primary">
+                      {courthouse?.nombre}
+                    </CardTitle>
+                  )}
+                </div>
+                {user && courthouse && (
+                  <ReportarProblema
+                    courthouseId={courthouse.id}
+                    courthouseName={courthouse.nombre}
+                    variant="outline"
+                  />
+                )}
+              </div>
               {isLoading ? (
                 <div className="space-y-2 pt-2">
                   <Skeleton className="h-5 w-full" />

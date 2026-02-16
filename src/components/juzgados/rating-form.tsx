@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Star, Loader2 } from "lucide-react";
 import { ratingCategories } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { emailLayout, emailButton, emailList, emailStyles } from "@/lib/email-templates";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase, useUser, addDocumentNonBlocking } from "@/firebase";
 import { collection, serverTimestamp } from "firebase/firestore";
@@ -148,28 +149,21 @@ export function RatingForm({ courthouseId, courthouseName }: { courthouseId: str
           to: ['abengolea1@gmail.com'],
           message: {
               subject: 'Nuevo Comentario Pendiente de Moderación',
-              html: `
-                  <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-                    <div style="background-color: #2a3b4f; color: #ffffff; padding: 20px; text-align: center;">
-                      <h1 style="margin: 0; font-size: 24px;">Justicia Calificada</h1>
-                    </div>
-                    <div style="padding: 20px; line-height: 1.6; color: #333;">
-                      <h2 style="color: #1a2c41;">Nuevo Comentario para Moderar</h2>
-                      <p>Un abogado ha dejado un nuevo comentario que requiere su aprobación.</p>
-                      <ul style="list-style-type: none; padding: 0;">
-                          <li style="padding: 5px 0;"><strong>Juzgado:</strong> ${courthouseName || courthouseId}</li>
-                          <li style="padding: 5px 0;"><strong>Usuario:</strong> ${user.displayName || user.email}</li>
-                      </ul>
-                      <div style="background-color: #f8f9fa; border-left: 4px solid #3b82f6; padding: 15px; margin: 15px 0;">
-                        <p style="margin: 0; font-style: italic;">"${values.comentario}"</p>
-                      </div>
-                      <a href="${adminLink}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 10px;">Moderar Comentario</a>
-                    </div>
-                    <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #6c757d;">
-                      <p>Este es un correo electrónico automatizado.</p>
-                    </div>
+              html: emailLayout({
+                body: `
+                  <h2 style="${emailStyles.heading}">Nuevo Comentario para Moderar</h2>
+                  <p style="${emailStyles.body}">Un abogado ha dejado un nuevo comentario que requiere su aprobación.</p>
+                  ${emailList([
+                    { label: "Juzgado", value: courthouseName || courthouseId },
+                    { label: "Usuario", value: user.displayName || user.email || "" },
+                  ])}
+                  <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+                    <p style="${emailStyles.quote} margin: 0;">"${values.comentario}"</p>
                   </div>
-              `,
+                  ${emailButton(adminLink, "Moderar Comentario")}
+                `,
+                footer: "Este es un correo electrónico automatizado.",
+              }),
           },
       };
       const mailCollectionRef = collection(firestore, "mail");

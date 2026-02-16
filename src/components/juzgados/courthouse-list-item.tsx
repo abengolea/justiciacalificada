@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Star, MapPin, PenSquare } from "lucide-react";
+import { Star, MapPin, PenSquare, AlertCircle } from "lucide-react";
 import type { Courthouse } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { ReportarProblema } from "./reportar-problema";
 
 interface CourthouseListItemProps {
   courthouse: Courthouse;
@@ -45,7 +46,17 @@ export function CourthouseListItem({ courthouse, averageRating, ratingCount }: C
           ({ratingCount} {ratingCount === 1 ? 'voto' : 'votos'})
         </span>
       </div>
-      <div className="shrink-0">
+      <div className="shrink-0 flex items-center gap-1">
+        <ReportarProblema
+          courthouseId={courthouse.id}
+          courthouseName={courthouse.nombre}
+          trigger={
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+              <AlertCircle className="h-4 w-4" />
+              <span className="sr-only">Reportar problema</span>
+            </Button>
+          }
+        />
         <Button asChild variant="outline" size="sm">
             <Link href={`/juzgados/${courthouse.id}`}>
                 <PenSquare className="mr-2" />

@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +40,7 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { Courthouse } from '@/lib/types';
 
 const formSchema = z.object({
@@ -47,7 +48,6 @@ const formSchema = z.object({
   dependencia: z.string().min(1, { message: 'La dependencia es requerida.' }),
   ciudad: z.string().min(1, { message: 'La ciudad es requerida.' }),
   fuero: z.string().min(1, { message: 'El fuero es requerido.' }),
-  instancia: z.string().min(1, { message: 'La instancia es requerida.' }),
   direccion: z.string().optional(),
   telefono: z.string().optional(),
 });
@@ -69,7 +69,6 @@ export default function NewCourthousePage() {
             dependencia: '',
             ciudad: '',
             fuero: '',
-            instancia: '',
             direccion: '',
             telefono: '',
         },
@@ -102,11 +101,6 @@ export default function NewCourthousePage() {
         if (!juzgados) return [];
         return [...new Set(juzgados.map(j => j.ciudad).filter(Boolean))].sort();
     }, [juzgados]);
-    
-    const instanciasList = useMemo(() => {
-        if (!juzgados) return [];
-        return [...new Set(juzgados.map(j => j.instancia).filter(Boolean))].sort();
-    }, [juzgados]);
 
     const isLoadingData = isLoadingProvincias || isLoadingFueros || isLoadingJuzgados;
 
@@ -136,6 +130,14 @@ export default function NewCourthousePage() {
     
     return (
         <div className="container mx-auto max-w-2xl py-8">
+            <div className="mb-4">
+                <Button variant="outline" asChild>
+                    <Link href="/admin/correccion">
+                        <Search className="mr-2 h-4 w-4" />
+                        Buscar juzgados
+                    </Link>
+                </Button>
+            </div>
             <Card>
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold">Crear Nuevo Juzgado</CardTitle>
@@ -203,48 +205,26 @@ export default function NewCourthousePage() {
                                 />
                             </div>
 
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <FormField
-                                    control={form.control}
-                                    name="fuero"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Fuero</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingData}>
-                                            <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Seleccionar fuero" />
-                                            </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                            {fuerosList.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="instancia"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Instancia</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingData}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Seleccionar instancia" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {instanciasList.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                             </div>
+                            <FormField
+                                control={form.control}
+                                name="fuero"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Fuero</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isLoadingData}>
+                                        <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Seleccionar fuero" />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                        {fuerosList.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
                              <FormField
                                 control={form.control}
